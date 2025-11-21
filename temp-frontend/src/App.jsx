@@ -92,7 +92,7 @@ function App() {
     e.preventDefault()
     setLoading(true)
     try {
-      const response = await axios.post(`${API_BASE}/users/login`, loginForm)
+      const response = await axios.post(`${API_BASE}/auth/login`, loginForm)
       if (response.data.success) {
         const token = response.data.data.token
         const userData = response.data.data
