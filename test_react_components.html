@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React组件测试 - 教师管理</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; }
+        .success { color: #10b981; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; border: none; border-radius: 5px; background: #667eea; color: white; font-weight: 500; }
+        button:hover { background: #5a67d8; }
+        #console { background: #1f2937; color: #f3f4f6; padding: 15px; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 14px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        .api-test { background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 10px 0; }
+        .token-status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .token-valid { background: #d1fae5; color: #065f46; }
+        .token-invalid { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 React组件测试 - 教师管理/成果库</h1>
+        
+        <div class="test-section">
+            <h3>🔑 认证检查</h3>
+            <button onclick="checkAuthStatus()">检查认证状态</button>
+            <button onclick="testTokenValidity()">测试Token有效性</button>
+            <div id="authStatus"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 API端点测试</h3>
+            <div class="api-test">
+                <p><strong>测试以下API端点：</strong></p>
+                <button onclick="testEndpoint('/teacher/my-projects')">教师个人项目</button>
+                <button onclick="testEndpoint('/teacher/projects')">教师所有项目</button>
+                <button onclick="testEndpoint('/teacher/library')">教师成果库</button>
+                <button onclick="testEndpoint('/projects')">通用项目列表</button>
+                <button onclick="testEndpoint('/achievements')">成果列表</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 参数测试</h3>
+            <button onclick="testWithParams()">测试带分页参数</button>
+            <button onclick="testWithoutParams()">测试不带参数</button>
+            <button onclick="compareResults()">对比结果</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 控制台输出</h3>
+            <div id="console">等待测试开始...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#f3f4f6';
+            console.innerHTML += `[${timestamp}] <span style="color: ${color}">${message}</span>\n`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function checkAuthStatus() {
+            log('=== 认证状态检查 ===');
+            
+            // 检查不同类型的token
+            const tokens = {
+                '教师Token (localStorage)': localStorage.getItem('teacherToken'),
+                '教师Token (sessionStorage)': sessionStorage.getItem('teacherToken'),
+                '通用Token (localStorage)': localStorage.getItem('token'),
+                '通用Token (sessionStorage)': sessionStorage.getItem('token')
+            };
+            
+            let hasValidToken = false;
+            let tokenType = '';
+            
+            Object.entries(tokens).forEach(([name, token]) => {
+                if (token) {
+                    log(`✅ ${name}: 存在 (${token.length} 字符)`, 'success');
+                    hasValidToken = true;
+                    tokenType = name;
+                } else {
+                    log(`❌ ${name}: 不存在`, 'error');
+                }
+            });
+            
+            const statusDiv = document.getElementById('authStatus');
+            if (hasValidToken) {
+                statusDiv.innerHTML = `<div class="token-valid">✅ 找到有效Token: ${tokenType}</div>`;
+            } else {
+                statusDiv.innerHTML = `<div class="token-invalid">❌ 没有找到有效的Token</div>`;
+            }
+        }
+
+        async function testTokenValidity() {
+            log('=== Token有效性测试 ===');
+            
+            const token = localStorage.getItem('teacherToken') || sessionStorage.getItem('teacherToken') || localStorage.getItem('token');
+            
+            if (!token) {
+                log('❌ 没有可用的Token', 'error');
+                return;
+            }
+            
+            try {
+                log('🔄 测试 /api/auth/me...');
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`📊 响应状态: ${response.status} ${response.statusText}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Token有效 - 用户: ${data.data?.username || '未知'} (${data.data?.role || '未知角色'})`, 'success');
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Token无效: ${errorText.substring(0, 100)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 请求失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testEndpoint(endpoint) {
+            log(`=== 测试端点: ${endpoint} ===`);
+            
+            const token = localStorage.getItem('teacherToken') || sessionStorage.getItem('teacherToken') || localStorage.getItem('token');
+            
+            if (!token) {
+                log('❌ 没有可用的Token', 'error');
+                return;
+            }
+            
+            try {
+                log('🔄 发送请求...');
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`📊 响应状态: ${response.status} ${response.statusText}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const itemCount = data.data?.length || data.data?.items?.length || 0;
+                    log(`✅ 请求成功 - 获取到 ${itemCount} 条数据`, 'success');
+                    
+                    if (data.data && data.data.length > 0) {
+                        log(`📋 数据示例: ${JSON.stringify(data.data[0]).substring(0, 200)}...`);
+                    }
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ 请求失败: ${errorText.substring(0, 150)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 网络错误: ${error.message}`, 'error');
+            }
+        }
+
+        async function testWithParams() {
+            log('=== 测试带分页参数 ===');
+            
+            const token = localStorage.getItem('teacherToken') || localStorage.getItem('token');
+            if (!token) {
+                log('❌ 没有可用的Token', 'error');
+                return;
+            }
+            
+            try {
+                log('🔄 测试 /teacher/my-projects 带分页参数...');
+                const response = await fetch(`${API_BASE}/teacher/my-projects?page=1&pageSize=100`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`📊 带参数响应: ${response.status} ${response.statusText}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ 带参数失败: ${errorText.substring(0, 150)}`, 'error');
+                } else {
+                    log('✅ 带参数请求成功', 'success');
+                }
+            } catch (error) {
+                log(`❌ 带参数请求错误: ${error.message}`, 'error');
+            }
+        }
+
+        async function testWithoutParams() {
+            log('=== 测试不带参数 ===');
+            
+            const token = localStorage.getItem('teacherToken') || localStorage.getItem('token');
+            if (!token) {
+                log('❌ 没有可用的Token', 'error');
+                return;
+            }
+            
+            try {
+                log('🔄 测试 /teacher/my-projects 不带参数...');
+                const response = await fetch(`${API_BASE}/teacher/my-projects`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`📊 无参数响应: ${response.status} ${response.statusText}`);
+                
+                if (response.ok) {
+                    log('✅ 无参数请求成功', 'success');
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ 无参数失败: ${errorText.substring(0, 150)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 无参数请求错误: ${error.message}`, 'error');
+            }
+        }
+
+        async function compareResults() {
+            log('=== 参数对比测试 ===');
+            await testWithParams();
+            await testWithoutParams();
+            log('📊 对比完成 - 查看上面的结果');
+        }
+
+        // 页面加载完成后自动检查
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🚀 React组件测试页面加载完成');
+            log('ℹ️  使用左侧按钮开始测试');
+            checkAuthStatus(); // 自动检查认证状态
+        });
+    </script>
+</body>
+</html>

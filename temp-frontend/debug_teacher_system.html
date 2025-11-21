@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师系统调试</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        .debug-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .pending { background: #fef3c7; color: #92400e; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        pre {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            border-left: 4px solid #667eea;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 教师系统调试页面</h1>
+    
+    <div class="debug-card">
+        <h2>📁 文件检查</h2>
+        <div id="file-check">正在检查文件...</div>
+    </div>
+    
+    <div class="debug-card">
+        <h2>🔗 页面链接测试</h2>
+        <a href="teacher.html" class="btn" target="_blank">🏠 打开教师系统</a>
+        <a href="login.html" class="btn" target="_blank">🔐 打开登录页面</a>
+    </div>
+    
+    <div class="debug-card">
+        <h2>📝 控制台错误检查</h2>
+        <p>打开教师系统页面后，按F12查看控制台是否有错误信息</p>
+        <div id="console-errors">请在控制台查看实际错误信息</div>
+    </div>
+    
+    <div class="debug-card">
+        <h2>🎯 手动测试步骤</h2>
+        <ol>
+            <li>确保后端服务器运行：<code>node src/app.js</code></li>
+            <li>访问登录页面：<a href="login.html" target="_blank">http://localhost:3000/login.html</a></li>
+            <li>使用教师账号登录：
+                <pre>邮箱: teacher1763449748933@example.com
+密码: password123</pre>
+            </li>
+            <li>检查是否自动跳转到教师系统</li>
+            <li>检查是否显示所有导航菜单</li>
+            <li>点击各个菜单项检查页面切换</li>
+        </ol>
+    </div>
+    
+    <div class="debug-card">
+        <h2>🔍 可能的问题原因</h2>
+        <ul>
+            <li><strong>JavaScript文件加载失败</strong> - 检查网络请求</li>
+            <li><strong>CSS样式未加载</strong> - 检查页面布局</li>
+            <li><strong>后端API未响应</strong> - 检查服务器状态</li>
+            <li><strong>认证失败</strong> - 检查token是否正确</li>
+            <li><strong>浏览器缓存</strong> - 清除缓存后重试</li>
+        </ul>
+    </div>
+    
+    <script>
+        // 检查文件是否存在
+        async function checkFiles() {
+            const files = [
+                'teacher.html',
+            'teacher.js',
+            'login.html',
+            'login.js'
+            ];
+            
+            const results = [];
+            
+            for (const file of files) {
+                try {
+                    const response = await fetch(file, { method: 'HEAD' });
+                    results.push(`<div class="status ${response.ok ? 'success' : 'error'}">
+                        ${response.ok ? '✅' : '❌'} ${file}
+                    </div>`);
+                } catch (error) {
+                    results.push(`<div class="status error">❌ ${file} - ${error.message}</div>`);
+                }
+            }
+            
+            document.getElementById('file-check').innerHTML = results.join('');
+        }
+        
+        // 页面加载时检查
+        window.addEventListener('load', () => {
+            checkFiles();
+            
+            // 显示当前URL信息
+            console.log('当前调试页面URL:', window.location.href);
+            console.log('教师系统应该位于:', window.location.origin + '/teacher.html');
+        });
+        
+        // 检查浏览器控制台错误
+        window.addEventListener('error', (event) => {
+            console.error('页面错误:', event.error);
+            const errorDiv = document.getElementById('console-errors');
+            errorDiv.innerHTML += `<div class="status error">❌ ${event.error.message}</div>`;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师成果库调试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .result {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>教师成果库调试</h1>
+
+    <!-- 登录表单 -->
+    <div class="container">
+        <h2>1. 教师登录</h2>
+        <div class="form-group">
+            <label>邮箱:</label>
+            <input type="email" id="email" value="testteacher123@example.com">
+        </div>
+        <div class="form-group">
+            <label>密码:</label>
+            <input type="password" id="password" value="123456">
+        </div>
+        <button onclick="login()">登录</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+
+    <!-- API测试 -->
+    <div class="container">
+        <h2>2. 成果库API测试</h2>
+        <button onclick="testStudentAchievements()">测试获取学生成果库</button>
+        <div id="apiResult" class="result"></div>
+    </div>
+
+    <!-- Token显示 -->
+    <div class="container">
+        <h2>3. 当前Token信息</h2>
+        <button onclick="showTokenInfo()">显示Token信息</button>
+        <div id="tokenResult" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        let currentToken = null;
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+
+            try {
+                console.log('🔑 尝试登录...');
+                const response = await fetch(`${API_BASE}/users/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    currentToken = data.data.token;
+                    localStorage.setItem('teacherToken', currentToken);
+                    
+                    resultDiv.innerHTML = `✅ 登录成功!
+📋 用户信息: ${JSON.stringify(data.data.user, null, 2)}
+📋 Token: ${currentToken.substring(0, 50)}...
+📋 完整Token: ${currentToken}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ 登录失败: ${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ 网络错误: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        async function testStudentAchievements() {
+            const resultDiv = document.getElementById('apiResult');
+            
+            // 尝试从localStorage获取token
+            const token = currentToken || localStorage.getItem('teacherToken');
+            
+            if (!token) {
+                resultDiv.innerHTML = '❌ 没有找到有效token，请先登录';
+                resultDiv.className = 'result error';
+                return;
+            }
+
+            try {
+                console.log('🚀 测试学生成果库API...');
+                
+                const response = await fetch(`${API_BASE}/teacher/student-achievements?page=1&pageSize=10`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `✅ API调用成功!
+📋 状态码: ${response.status}
+📋 返回数据: ${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.innerHTML = `❌ API调用失败:
+📋 状态码: ${response.status}
+📋 错误信息: ${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ 网络错误: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        function showTokenInfo() {
+            const resultDiv = document.getElementById('tokenResult');
+            const token = currentToken || localStorage.getItem('teacherToken') || sessionStorage.getItem('teacherToken');
+            
+            if (token) {
+                try {
+                    // 解析JWT token
+                    const parts = token.split('.');
+                    if (parts.length === 3) {
+                        const payload = JSON.parse(atob(parts[1]));
+                        resultDiv.innerHTML = `✅ 找到Token:
+📋 Token: ${token.substring(0, 50)}...
+📋 完整Token: ${token}
+📋 解析后的用户信息: ${JSON.stringify(payload, null, 2)}
+📋 过期时间: ${new Date(payload.exp * 1000).toLocaleString()}
+📋 当前时间: ${new Date().toLocaleString()}
+📋 是否过期: ${Date.now() > payload.exp * 1000 ? '已过期' : '有效'}`;
+                    } else {
+                        resultDiv.innerHTML = `❌ Token格式无效:
+📋 Token: ${token}`;
+                    }
+                } catch (error) {
+                    resultDiv.innerHTML = `❌ Token解析失败: ${error.message}
+📋 Token: ${token}`;
+                }
+                resultDiv.className = 'result success';
+            } else {
+                resultDiv.innerHTML = '❌ 没有找到Token';
+                resultDiv.className = 'result error';
+            }
+        }
+
+        // 页面加载时显示token信息
+        window.onload = function() {
+            showTokenInfo();
+        };
+    </script>
+</body>
+</html>

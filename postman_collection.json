@@ -1,0 +1,396 @@
+{
+  "info": {
+    "name": "学生项目展示与教师审核系统 API",
+    "description": "完整的API测试集合，包含所有接口",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "认证模块",
+      "item": [
+        {
+          "name": "用户注册",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"password123\",\n  \"username\": \"测试学生\",\n  \"role\": \"student\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "用户登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "获取当前用户信息",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "me"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "文件上传模块",
+      "item": [
+        {
+          "name": "上传图片",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "/path/to/test-image.jpg"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/upload/image",
+              "host": ["{{base_url}}"],
+              "path": ["api", "upload", "image"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "上传视频",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "video",
+                  "type": "file",
+                  "src": "/path/to/test-video.mp4"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/upload/video",
+              "host": ["{{base_url}}"],
+              "path": ["api", "upload", "video"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "项目管理模块",
+      "item": [
+        {
+          "name": "提交项目",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"测试项目标题\",\n  \"content_html\": \"<p>这是项目内容，包含<img src=\\\"https://example.com/image1.jpg\\\" />图片</p>\",\n  \"video_url\": \"https://example.com/video.mp4\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/projects",
+              "host": ["{{base_url}}"],
+              "path": ["api", "projects"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "获取个人项目列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/projects?page=1&pageSize=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "projects"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "获取项目详情",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/projects/{{project_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "projects", "{{project_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "审核模块",
+      "item": [
+        {
+          "name": "获取待审核项目列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacher_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/review/pending?page=1&pageSize=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "review", "pending"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "审核项目（通过）",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacher_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audit_result\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/review/{{project_id}}/audit",
+              "host": ["{{base_url}}"],
+              "path": ["api", "review", "{{project_id}}", "audit"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "审核项目（不通过）",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacher_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audit_result\": 2,\n  \"reject_reason\": \"项目内容不符合要求\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/review/{{project_id}}/audit",
+              "host": ["{{base_url}}"],
+              "path": ["api", "review", "{{project_id}}", "audit"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "统计模块",
+      "item": [
+        {
+          "name": "主页项目列表（无需登录）",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/stats/projects/public?page=1&pageSize=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "stats", "projects", "public"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "浏览量统计",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/stats/projects/{{project_id}}/view",
+              "host": ["{{base_url}}"],
+              "path": ["api", "stats", "projects", "{{project_id}}", "view"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "学生统计数据",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/stats/student",
+              "host": ["{{base_url}}"],
+              "path": ["api", "stats", "student"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "教师统计数据",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacher_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/stats/teacher",
+              "host": ["{{base_url}}"],
+              "path": ["api", "stats", "teacher"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "student_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "teacher_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "project_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

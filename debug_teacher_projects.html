@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师项目列表调试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; }
+        .success { color: #10b981; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        .warning { color: #f59e0b; font-weight: bold; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; border: none; border-radius: 5px; background: #667eea; color: white; font-weight: 500; }
+        button:hover { background: #5a67d8; }
+        #console { background: #1f2937; color: #f3f4f6; padding: 15px; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 14px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        .project-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        .project-title { font-weight: bold; color: #2d3748; margin-bottom: 8px; }
+        .project-meta { color: #718096; font-size: 14px; }
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; margin-left: 8px; }
+        .status-0 { background: #fed7d7; color: #c53030; } /* 草稿 */
+        .status-1 { background: #feebc8; color: #dd6b20; } /* 审核中 */
+        .status-2 { background: #c6f6d5; color: #38a169; } /* 已通过 */
+        .status-3 { background: #e2e8f0; color: #4a5568; } /* 已打回 */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 教师项目列表调试工具</h1>
+        
+        <div class="test-section">
+            <h3>🔍 环境检查</h3>
+            <button onclick="checkEnvironment()">检查环境</button>
+            <button onclick="checkAuth()">检查认证</button>
+            <button onclick="checkContainers()">检查容器</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 API测试</h3>
+            <button onclick="testApiConnection()">测试API连接</button>
+            <button onclick="testTeacherProjects()">测试教师项目API</button>
+            <button onclick="testMockData()">测试模拟数据</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 数据验证</h3>
+            <button onclick="validateProjectData()">验证项目数据</button>
+            <button onclick="checkRenderLogic()">检查渲染逻辑</button>
+            <button onclick="clearConsole()">清空控制台</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📝 问题诊断</h3>
+            <div id="diagnostic-info">
+                <p><strong>常见问题：</strong></p>
+                <ul>
+                    <li>容器ID不匹配：确保使用 projectManageList 而不是 projectList</li>
+                    <li>认证失败：检查 token 是否有效</li>
+                    <li>API路径错误：使用 /teacher/my-projects 而不是 /projects/teacher</li>
+                    <li>数据格式不匹配：检查后端返回的数据结构</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 控制台输出</h3>
+            <div id="console">等待调试开始...</div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#f3f4f6';
+            console.innerHTML += `[${timestamp}] <span style="color: ${color}">${message}</span>\n`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '控制台已清空\n';
+        }
+
+        function checkEnvironment() {
+            log('=== 环境检查 ===');
+            
+            // 检查teacherSystem
+            if (typeof window.teacherSystem !== 'undefined') {
+                log('✅ teacherSystem对象存在', 'success');
+                log(`当前页面: ${teacherSystem.currentPage || '未知'}`);
+                log(`当前用户: ${teacherSystem.user ? teacherSystem.user.username : '未登录'}`);
+            } else {
+                log('⚠️  teacherSystem对象不存在', 'warning');
+                log('ℹ️  请在教师系统页面(teacher.html)中运行此测试', 'info');
+            }
+            
+            // 检查函数
+            log(`loadProjects函数: ${typeof window.teacherSystem?.loadProjects === 'function' ? '存在' : '不存在'}`);
+            log(`renderProjects函数: ${typeof window.teacherSystem?.renderProjects === 'function' ? '存在' : '不存在'}`);
+            
+            // 检查容器
+            const manageContainer = document.getElementById('projectManageList');
+            const oldContainer = document.getElementById('projectList');
+            log(`成果管理容器(projectManageList): ${manageContainer ? '存在' : '不存在'}`);
+            log(`旧容器(projectList): ${oldContainer ? '存在' : '不存在'}`);
+        }
+
+        function checkAuth() {
+            log('=== 认证检查 ===');
+            
+            const token = localStorage.getItem('teacherToken') || sessionStorage.getItem('teacherToken');
+            log(`Token存在: ${token ? '是' : '否'}`);
+            
+            if (token) {
+                log(`Token长度: ${token.length} 字符`);
+                log(`Token前缀: ${token.substring(0, 20)}...`);
+            } else {
+                log('❌ 没有token，无法访问受保护的API', 'error');
+            }
+        }
+
+        function checkContainers() {
+            log('=== 容器检查 ===');
+            
+            // 检查成果管理页面容器
+            const manageContainer = document.getElementById('projectManageList');
+            if (manageContainer) {
+                log('✅ 找到成果管理容器: projectManageList', 'success');
+                log(`容器内容: ${manageContainer.innerHTML.substring(0, 100)}...`);
+            } else {
+                log('❌ 未找到成果管理容器', 'error');
+            }
+            
+            // 检查其他可能的容器
+            const containers = ['projectList', 'projectManageList', 'manageList'];
+            containers.forEach(id => {
+                const element = document.getElementById(id);
+                log(`容器 ${id}: ${element ? '存在' : '不存在'}`);
+            });
+        }
+
+        async function testApiConnection() {
+            log('=== API连接测试 ===');
+            
+            const token = localStorage.getItem('teacherToken') || sessionStorage.getItem('teacherToken');
+            if (!token) {
+                log('❌ 没有token，跳过API测试', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/teacher/my-projects', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`API响应状态: ${response.status} ${response.statusText}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ API连接成功', 'success');
+                    log(`返回数据: ${JSON.stringify(data, null, 2).substring(0, 200)}...`);
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ API请求失败: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ API连接失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testTeacherProjects() {
+            log('=== 教师项目API测试 ===');
+            
+            if (typeof window.teacherSystem === 'undefined') {
+                log('❌ teacherSystem未定义', 'error');
+                return;
+            }
+            
+            try {
+                log('调用 teacherSystem.loadProjects()...');
+                await teacherSystem.loadProjects();
+                log('✅ loadProjects 调用完成', 'success');
+                
+                if (teacherSystem.projects && teacherSystem.projects.length > 0) {
+                    log(`✅ 获取到 ${teacherSystem.projects.length} 个项目`, 'success');
+                    displayProjects(teacherSystem.projects);
+                } else {
+                    log('⚠️  项目列表为空', 'warning');
+                }
+            } catch (error) {
+                log(`❌ 测试失败: ${error.message}`, 'error');
+                console.error('详细错误:', error);
+            }
+        }
+
+        function testMockData() {
+            log('=== 模拟数据测试 ===');
+            
+            if (typeof window.teacherSystem === 'undefined') {
+                log('❌ teacherSystem未定义', 'error');
+                return;
+            }
+            
+            try {
+                teacherSystem.loadMockProjects();
+                log('✅ 模拟数据加载完成', 'success');
+                
+                if (teacherSystem.projects && teacherSystem.projects.length > 0) {
+                    log(`✅ 获取到 ${teacherSystem.projects.length} 个模拟项目`, 'success');
+                    displayProjects(teacherSystem.projects);
+                }
+            } catch (error) {
+                log(`❌ 模拟数据测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        function displayProjects(projects) {
+            if (!projects || projects.length === 0) {
+                log('⚠️  没有项目可显示', 'warning');
+                return;
+            }
+            
+            log('📊 项目列表:');
+            projects.forEach((project, index) => {
+                const statusClass = `status-${project.status || 0}`;
+                log(`  ${index + 1}. ${project.title} (${project.type || '未知类型'}) [状态: ${project.status || 0}]`);
+            });
+        }
+
+        function validateProjectData() {
+            log('=== 项目数据验证 ===');
+            
+            if (!window.teacherSystem || !teacherSystem.projects) {
+                log('⚠️  没有项目数据可验证', 'warning');
+                return;
+            }
+            
+            const projects = teacherSystem.projects;
+            log(`验证 ${projects.length} 个项目数据...`);
+            
+            projects.forEach((project, index) => {
+                const errors = [];
+                if (!project.id) errors.push('缺少ID');
+                if (!project.title) errors.push('缺少标题');
+                if (project.status === undefined) errors.push('缺少状态');
+                
+                if (errors.length > 0) {
+                    log(`❌ 项目 ${index + 1} 数据错误: ${errors.join(', ')}`, 'error');
+                } else {
+                    log(`✅ 项目 ${index + 1} 数据完整: ${project.title}`);
+                }
+            });
+        }
+
+        function checkRenderLogic() {
+            log('=== 渲染逻辑检查 ===');
+            
+            if (typeof window.teacherSystem === 'undefined') {
+                log('❌ teacherSystem未定义', 'error');
+                return;
+            }
+            
+            const container = document.getElementById('projectManageList');
+            if (!container) {
+                log('❌ 找不到渲染容器 projectManageList', 'error');
+                return;
+            }
+            
+            log('✅ 渲染容器存在', 'success');
+            log(`当前容器内容: ${container.innerHTML.substring(0, 200)}...`);
+            
+            // 检查是否有项目数据
+            if (teacherSystem.projects && teacherSystem.projects.length > 0) {
+                log(`✅ 有 ${teacherSystem.projects.length} 个项目等待渲染`, 'success');
+            } else {
+                log('⚠️  没有项目数据', 'warning');
+            }
+        }
+
+        // 页面加载完成后自动检查
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🚀 教师项目列表调试工具加载完成');
+            log('ℹ️  请在教师系统页面(teacher.html)中测试实际功能');
+        });
+    </script>
+</body>
+</html>

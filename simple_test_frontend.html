@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师审批功能前端测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; }
+        .success { color: #10b981; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        .warning { color: #f59e0b; font-weight: bold; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; border: none; border-radius: 5px; background: #667eea; color: white; font-weight: 500; }
+        button:hover { background: #5a67d8; }
+        #console { background: #1f2937; color: #f3f4f6; padding: 15px; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 14px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        .feature-list { background: #f0f9ff; padding: 15px; border-radius: 5px; border-left: 4px solid #3b82f6; }
+        .feature-list h3 { margin-top: 0; color: #1e40af; }
+        .feature-list ul { margin: 10px 0; padding-left: 20px; }
+        .feature-list li { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 教师审批功能修复验证</h1>
+        
+        <div class="feature-list">
+            <h3>✅ 已修复的功能</h3>
+            <ul>
+                <li><strong>查看功能：</strong>点击"批改"按钮现在会显示项目详情模态框</li>
+                <li><strong>通过功能：</strong>选择"通过"选项并确认可以审批通过项目</li>
+                <li><strong>驳回功能：</strong>选择"驳回"选项，输入原因并确认可以驳回项目</li>
+                <li><strong>用户反馈：</strong>添加了消息提示系统，显示操作成功/失败信息</li>
+                <li><strong>错误处理：</strong>增强了错误处理和边界情况处理</li>
+                <li><strong>数据加载：</strong>从后端API动态加载待审批项目列表</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 前端功能测试</h3>
+            <p>以下测试可以在浏览器控制台中运行，验证修复的功能：</p>
+            <button onclick="testReviewProject()">测试查看项目功能</button>
+            <button onclick="testShowApprovalModal()">测试审批模态框</button>
+            <button onclick="testMessageSystem()">测试消息提示系统</button>
+            <button onclick="testApiConnection()">测试API连接</button>
+            <button onclick="clearConsole()">清空控制台</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔍 调试信息</h3>
+            <div id="console">等待测试开始...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 使用说明</h3>
+            <ol>
+                <li><strong>登录教师系统：</strong>访问 teacher.html 页面，使用教师账号登录</li>
+                <li><strong>进入审批页面：</strong>点击导航栏的"成果审批"选项</li>
+                <li><strong>查看项目：</strong>点击项目行的"批改"按钮查看详情</li>
+                <li><strong>进行审批：</strong>在模态框中选择通过或驳回，点击确认</li>
+                <li><strong>查看结果：</strong>系统会显示操作结果，并自动刷新列表</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h3>⚠️ 注意事项</h3>
+            <ul>
+                <li>确保服务器正在运行 (localhost:3000)</li>
+                <li>使用教师账号登录系统</li>
+                <li>需要有待审批的项目才能测试通过/驳回功能</li>
+                <li>驳回操作需要填写驳回原因</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#f3f4f6';
+            console.innerHTML += `[${timestamp}] <span style="color: ${color}">${message}</span>\n`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '控制台已清空\n';
+        }
+
+        function testReviewProject() {
+            log('=== 测试查看项目功能 ===');
+            
+            // 模拟teacherSystem.reviewProject函数
+            if (typeof window.teacherSystem !== 'undefined') {
+                log('✅ teacherSystem对象存在', 'success');
+                
+                if (typeof teacherSystem.reviewProject === 'function') {
+                    log('✅ reviewProject函数存在', 'success');
+                    
+                    try {
+                        // 模拟调用
+                        teacherSystem.currentReviewId = 'test-project-123';
+                        teacherSystem.showApprovalModal({
+                            title: '测试项目',
+                            student_name: '测试学生',
+                            created_at: new Date().toISOString(),
+                            type_id: '项目',
+                            description: '这是一个测试项目的描述内容。'
+                        });
+                        log('✅ 模态框显示函数调用成功', 'success');
+                    } catch (error) {
+                        log(`❌ 函数调用失败: ${error.message}`, 'error');
+                    }
+                } else {
+                    log('❌ reviewProject函数不存在', 'error');
+                }
+            } else {
+                log('❌ teacherSystem对象不存在', 'error');
+                log('ℹ️  请在教师系统页面(teacher.html)中运行此测试', 'warning');
+            }
+        }
+
+        function testShowApprovalModal() {
+            log('=== 测试审批模态框 ===');
+            
+            if (typeof window.teacherSystem !== 'undefined') {
+                try {
+                    teacherSystem.showApprovalModal({
+                        title: 'AI智能学习系统',
+                        student_name: '张三',
+                        created_at: '2024-01-15T10:30:00Z',
+                        type_id: '项目',
+                        description: '基于人工智能的个性化学习系统，能够根据学生的学习习惯和进度提供定制化的学习内容。'
+                    });
+                    log('✅ 模态框显示成功', 'success');
+                    log('ℹ️  请在页面上查看显示的模态框', 'info');
+                } catch (error) {
+                    log(`❌ 模态框显示失败: ${error.message}`, 'error');
+                }
+            } else {
+                log('❌ teacherSystem对象不存在', 'error');
+            }
+        }
+
+        function testMessageSystem() {
+            log('=== 测试消息提示系统 ===');
+            
+            if (typeof window.teacherSystem !== 'undefined') {
+                try {
+                    teacherSystem.showMessage('这是一条成功消息', 'success');
+                    setTimeout(() => {
+                        teacherSystem.showMessage('这是一条错误消息', 'error');
+                    }, 1000);
+                    setTimeout(() => {
+                        teacherSystem.showMessage('这是一条警告消息', 'warning');
+                    }, 2000);
+                    setTimeout(() => {
+                        teacherSystem.showMessage('这是一条普通消息', 'info');
+                    }, 3000);
+                    
+                    log('✅ 消息提示系统测试开始', 'success');
+                    log('ℹ️  请在页面右上角查看消息提示', 'info');
+                } catch (error) {
+                    log(`❌ 消息系统测试失败: ${error.message}`, 'error');
+                }
+            } else {
+                log('❌ teacherSystem对象不存在', 'error');
+            }
+        }
+
+        async function testApiConnection() {
+            log('=== 测试API连接 ===');
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/review/pending', {
+                    headers: {
+                        'Authorization': 'Bearer test-token',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.status === 401) {
+                    log('✅ API连接正常 (401认证错误是预期的)', 'success');
+                    log('ℹ️  需要有效token才能访问API', 'info');
+                } else if (response.ok) {
+                    log('✅ API连接正常', 'success');
+                } else {
+                    log(`⚠️  API返回状态: ${response.status}`, 'warning');
+                }
+            } catch (error) {
+                log(`❌ API连接失败: ${error.message}`, 'error');
+                log('ℹ️  请确保服务器正在运行 (localhost:3000)', 'warning');
+            }
+        }
+
+        // 页面加载完成后自动检查
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🚀 教师审批功能修复验证页面加载完成');
+            log('ℹ️  请在教师系统页面(teacher.html)中测试实际功能');
+            
+            // 检查teacherSystem是否存在
+            setTimeout(() => {
+                if (typeof window.teacherSystem !== 'undefined') {
+                    log('✅ teacherSystem对象已加载', 'success');
+                } else {
+                    log('⚠️  teacherSystem对象未找到', 'warning');
+                    log('ℹ️  这是正常的，因为此页面不是教师系统页面', 'info');
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

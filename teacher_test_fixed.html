@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师系统测试页面（已修复）</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.success {
+            background: #28a745;
+        }
+        button.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        button.danger {
+            background: #dc3545;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .warning { color: #ffc107; }
+        .info { color: #17a2b8; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .projects-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .projects-table th,
+        .projects-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .projects-table th {
+            background-color: #f2f2f2;
+        }
+        .score-excellent { color: #28a745; font-weight: bold; }
+        .score-good { color: #17a2b8; font-weight: bold; }
+        .score-average { color: #ffc107; font-weight: bold; }
+        .score-pass { color: #fd7e14; font-weight: bold; }
+        .score-fail { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🎓 教师系统测试页面（已修复400错误）</h1>
+
+    <!-- 状态卡片 -->
+    <div class="container">
+        <h2>📊 系统状态</h2>
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalProjects">0</div>
+                <div>总成果数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="excellentProjects">0</div>
+                <div>优秀成果</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="avgScore">0.0</div>
+                <div>平均分数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="studentCount">0</div>
+                <div>参与学生</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 登录和API测试 -->
+    <div class="container">
+        <h2>🔐 认证测试</h2>
+        
+        <div class="form-group">
+            <label>选择测试模式:</label>
+            <select id="testMode" onchange="switchMode()">
+                <option value="api">真实API测试</option>
+                <option value="mock">模拟数据模式</option>
+            </select>
+        </div>
+        
+        <div id="apiTestArea">
+            <div class="form-group">
+                <label>邮箱:</label>
+                <input type="email" id="email" value="teacher@example.com">
+            </div>
+            <div class="form-group">
+                <label>密码:</label>
+                <input type="password" id="password" value="123456">
+            </div>
+            <button onclick="login()">🔑 登录</button>
+            <button onclick="testLibraryAPI()" class="success">📚 测试成果库API</button>
+            <button onclick="clearTokens()" class="danger">🗑️ 清除Token</button>
+        </div>
+        
+        <div id="mockTestArea" style="display:none;">
+            <button onclick="loadMockData()" class="warning">📋 加载模拟数据</button>
+            <p class="info">模拟数据模式：无需登录，直接加载示例学生成果数据</p>
+        </div>
+        
+        <div id="authResult" class="result"></div>
+    </div>
+
+    <!-- 成果数据展示 -->
+    <div class="container">
+        <h2>📚 学生成果数据</h2>
+        <button onclick="refreshData()">🔄 刷新数据</button>
+        <button onclick="exportData()" class="success">📤 导出数据</button>
+        <div id="dataResult"></div>
+        
+        <table class="projects-table" id="projectsTable" style="display:none;">
+            <thead>
+                <tr>
+                    <th>成果名称</th>
+                    <th>分数</th>
+                    <th>类型</th>
+                    <th>学生姓名</th>
+                    <th>指导老师</th>
+                    <th>班级</th>
+                    <th>提交时间</th>
+                </tr>
+            </thead>
+            <tbody id="projectsTableBody">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        let currentToken = null;
+        let currentProjects = [];
+
+        // 切换测试模式
+        function switchMode() {
+            const mode = document.getElementById('testMode').value;
+            const apiArea = document.getElementById('apiTestArea');
+            const mockArea = document.getElementById('mockTestArea');
+            
+            if (mode === 'mock') {
+                apiArea.style.display = 'none';
+                mockArea.style.display = 'block';
+            } else {
+                apiArea.style.display = 'block';
+                mockArea.style.display = 'none';
+            }
+            
+            // 清除结果
+            document.getElementById('authResult').innerHTML = '';
+            document.getElementById('dataResult').innerHTML = '';
+            currentProjects = [];
+            updateStats();
+        }
+
+        // 登录
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('authResult');
+
+            try {
+                resultDiv.innerHTML = '🔄 正在登录...';
+                
+                const response = await fetch(`${API_BASE}/users/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    currentToken = data.data.token;
+                    localStorage.setItem('teacherToken', currentToken);
+                    
+                    resultDiv.innerHTML = `✅ 登录成功!
+📋 用户信息: ${JSON.stringify(data.data.user, null, 2)}
+📋 Token: ${currentToken.substring(0, 50)}...`;
+                    resultDiv.className = 'result success';
+                    
+                    // 自动测试API
+                    setTimeout(testLibraryAPI, 1000);
+                } else {
+                    resultDiv.innerHTML = `❌ 登录失败: ${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ 网络错误: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        // 测试成果库API
+        async function testLibraryAPI() {
+            const resultDiv = document.getElementById('authResult');
+            const token = currentToken || localStorage.getItem('teacherToken');
+            
+            if (!token) {
+                resultDiv.innerHTML = '❌ 没有找到有效token，请先登录';
+                resultDiv.className = 'result error';
+                return;
+            }
+
+            try {
+                resultDiv.innerHTML += '\n\n🔄 测试成果库API...';
+                
+                const response = await fetch(`${API_BASE}/teacher/student-achievements?page=1&pageSize=100`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    currentProjects = Array.isArray(data.data) ? data.data : data.data.items || [];
+                    resultDiv.innerHTML += `\n✅ API调用成功! 获取到 ${currentProjects.length} 个成果`;
+                    resultDiv.className = 'result success';
+                    
+                    displayProjects(currentProjects);
+                } else {
+                    resultDiv.innerHTML += `\n❌ API调用失败 (${response.status}): ${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result warning';
+                    
+                    // 400错误时建议使用模拟数据
+                    if (response.status === 400) {
+                        resultDiv.innerHTML += '\n💡 建议：切换到"模拟数据模式"进行测试';
+                    }
+                }
+            } catch (error) {
+                resultDiv.innerHTML += `\n❌ 网络错误: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        // 加载模拟数据
+        function loadMockData() {
+            const resultDiv = document.getElementById('authResult');
+            
+            currentProjects = [
+                {
+                    id: '1',
+                    title: '智能学习系统开发',
+                    project_type: '项目',
+                    student_name: '张三',
+                    student_id: 'S001',
+                    class_name: '计算机科学与技术1班',
+                    grade_name: '2021级',
+                    instructor_name: '李教授',
+                    score: 95,
+                    created_at: '2024-01-15T10:30:00Z',
+                    cover_image: null,
+                    status: 2
+                },
+                {
+                    id: '2',
+                    title: '基于深度学习的图像识别研究',
+                    project_type: '论文',
+                    student_name: '李四',
+                    student_id: 'S002',
+                    class_name: '软件工程2班',
+                    grade_name: '2021级',
+                    instructor_name: '王教授',
+                    score: 88,
+                    created_at: '2024-01-18T14:20:00Z',
+                    cover_image: null,
+                    status: 2
+                },
+                {
+                    id: '3',
+                    title: '移动应用UI设计',
+                    project_type: '设计',
+                    student_name: '王五',
+                    student_id: 'S003',
+                    class_name: '数字媒体技术1班',
+                    grade_name: '2021级',
+                    instructor_name: '陈教授',
+                    score: null,
+                    created_at: '2024-01-20T16:45:00Z',
+                    cover_image: null,
+                    status: 1
+                },
+                {
+                    id: '4',
+                    title: '电子商务平台开发',
+                    project_type: '项目',
+                    student_name: '赵六',
+                    student_id: 'S004',
+                    class_name: '计算机科学与技术2班',
+                    grade_name: '2022级',
+                    instructor_name: '张教授',
+                    score: 92,
+                    created_at: '2024-01-22T09:15:00Z',
+                    cover_image: null,
+                    status: 2
+                },
+                {
+                    id: '5',
+                    title: '机器学习模型优化研究',
+                    project_type: '论文',
+                    student_name: '孙七',
+                    student_id: 'S005',
+                    class_name: '人工智能1班',
+                    grade_name: '2022级',
+                    instructor_name: '刘教授',
+                    score: 85,
+                    created_at: '2024-01-25T11:30:00Z',
+                    cover_image: null,
+                    status: 2
+                }
+            ];
+            
+            resultDiv.innerHTML = `✅ 模拟数据加载成功! 共 ${currentProjects.length} 个学生成果`;
+            resultDiv.className = 'result success';
+            
+            displayProjects(currentProjects);
+        }
+
+        // 显示成果数据
+        function displayProjects(projects) {
+            const dataDiv = document.getElementById('dataResult');
+            const table = document.getElementById('projectsTable');
+            const tbody = document.getElementById('projectsTableBody');
+            
+            // 更新统计
+            updateStats();
+            
+            // 清空表格
+            tbody.innerHTML = '';
+            
+            if (projects.length === 0) {
+                dataDiv.innerHTML = '📋 暂无学生成果数据';
+                table.style.display = 'none';
+                return;
+            }
+            
+            // 填充表格
+            projects.forEach(project => {
+                const row = tbody.insertRow();
+                
+                // 成果名称
+                row.insertCell(0).textContent = project.title || '未命名';
+                
+                // 分数
+                const scoreCell = row.insertCell(1);
+                if (project.score) {
+                    const scoreClass = getScoreClass(project.score);
+                    scoreCell.innerHTML = `<span class="${scoreClass}">${project.score}分</span>`;
+                } else {
+                    scoreCell.textContent = '未评分';
+                }
+                
+                // 类型
+                row.insertCell(2).textContent = project.project_type || '未分类';
+                
+                // 学生姓名
+                row.insertCell(3).textContent = project.student_name || '未知';
+                
+                // 指导老师
+                row.insertCell(4).textContent = project.instructor_name || '未指定';
+                
+                // 班级
+                row.insertCell(5).textContent = project.class_name || '未分类';
+                
+                // 提交时间
+                const date = new Date(project.created_at);
+                row.insertCell(6).textContent = date.toLocaleString();
+            });
+            
+            table.style.display = 'table';
+            dataDiv.innerHTML = `📋 成功显示 ${projects.length} 个学生成果`;
+        }
+
+        // 获取分数样式类
+        function getScoreClass(score) {
+            if (score >= 90) return 'score-excellent';
+            if (score >= 80) return 'score-good';
+            if (score >= 70) return 'score-average';
+            if (score >= 60) return 'score-pass';
+            return 'score-fail';
+        }
+
+        // 更新统计数据
+        function updateStats() {
+            document.getElementById('totalProjects').textContent = currentProjects.length;
+            document.getElementById('excellentProjects').textContent = currentProjects.filter(p => p.score >= 90).length;
+            
+            const avgScore = currentProjects.length > 0 
+                ? (currentProjects.reduce((sum, p) => sum + (p.score || 0), 0) / currentProjects.length).toFixed(1)
+                : '0.0';
+            document.getElementById('avgScore').textContent = avgScore;
+            
+            const studentCount = new Set(currentProjects.map(p => p.student_id)).size;
+            document.getElementById('studentCount').textContent = studentCount;
+        }
+
+        // 刷新数据
+        function refreshData() {
+            const mode = document.getElementById('testMode').value;
+            if (mode === 'mock') {
+                loadMockData();
+            } else {
+                testLibraryAPI();
+            }
+        }
+
+        // 导出数据
+        function exportData() {
+            if (currentProjects.length === 0) {
+                alert('没有数据可导出');
+                return;
+            }
+            
+            // 创建CSV内容
+            let csv = '成果名称,分数,类型,学生姓名,学号,指导老师,班级,提交时间\n';
+            currentProjects.forEach(project => {
+                csv += `"${project.title}",${project.score || '未评分'},"${project.project_type}","${project.student_name}","${project.student_id}","${project.instructor_name}","${project.class_name}","${new Date(project.created_at).toLocaleString()}"\n`;
+            });
+            
+            // 创建下载链接
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `学生成果数据_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 清除Token
+        function clearTokens() {
+            localStorage.removeItem('teacherToken');
+            sessionStorage.removeItem('teacherToken');
+            localStorage.removeItem('token');
+            currentToken = null;
+            currentProjects = [];
+            
+            document.getElementById('authResult').innerHTML = '✅ Token已清除';
+            document.getElementById('authResult').className = 'result success';
+            document.getElementById('projectsTable').style.display = 'none';
+            document.getElementById('dataResult').innerHTML = '';
+            updateStats();
+        }
+
+        // 页面加载时初始化
+        window.onload = function() {
+            updateStats();
+            
+            // 检查是否有保存的token
+            const savedToken = localStorage.getItem('teacherToken');
+            if (savedToken) {
+                document.getElementById('authResult').innerHTML = `✅ 找到保存的Token: ${savedToken.substring(0, 50)}...`;
+                currentToken = savedToken;
+            }
+        };
+    </script>
+</body>
+</html>

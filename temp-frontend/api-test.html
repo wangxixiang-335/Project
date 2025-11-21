@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API测试页面</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        .test-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .pending { background: #fef3c7; color: #92400e; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        pre {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            border-left: 4px solid #667eea;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 API测试页面</h1>
+    
+    <div class="test-card">
+        <h2>🔐 登录测试</h2>
+        <button class="btn" onclick="testLogin()">测试登录</button>
+        <div id="login-result"></div>
+    </div>
+    
+    <div class="test-card">
+        <h2>📋 成果库测试</h2>
+        <button class="btn" onclick="testLibrary()">测试成果库API</button>
+        <div id="library-result"></div>
+    </div>
+    
+    <div class="test-card">
+        <h2>📝 审批项目测试</h2>
+        <button class="btn" onclick="testPending()">测试待审批项目</button>
+        <div id="pending-result"></div>
+    </div>
+    
+    <div class="test-card">
+        <h2>👤 用户信息测试</h2>
+        <button class="btn" onclick="testUserInfo()">测试用户信息</button>
+        <div id="user-result"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+
+        // API请求函数
+        async function apiRequest(endpoint, method = 'GET', data = null, token = null) {
+            const url = `http://localhost:3000${endpoint}`;
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const config = {
+                method,
+                headers,
+            };
+
+            if (data && (method === 'POST' || method === 'PUT')) {
+                config.body = JSON.stringify(data);
+            }
+
+            try {
+                const response = await fetch(url, config);
+                const result = await response.json();
+                return { success: response.ok, data: result, status: response.status };
+            } catch (error) {
+                console.error('API请求失败:', error);
+                throw error;
+            }
+        }
+
+        // 显示结果
+        function showResult(elementId, success, message, data = null) {
+            const element = document.getElementById(elementId);
+            const statusClass = success ? 'success' : 'error';
+            const icon = success ? '✅' : '❌';
+            
+            let html = `<div class="status ${statusClass}">${icon} ${message}</div>`;
+            
+            if (data) {
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            
+            element.innerHTML = html;
+        }
+
+        // 测试登录
+        async function testLogin() {
+            try {
+                const response = await apiRequest('/api/auth/login', 'POST', {
+                    email: 'teacher1763449748933@example.com',
+                    password: 'password123'
+                });
+
+                if (response.success && response.data.success) {
+                    authToken = response.data.data.token;
+                    localStorage.setItem('teacherToken', authToken);
+                    showResult('login-result', true, '登录成功', response.data);
+                } else {
+                    showResult('login-result', false, '登录失败', response.data);
+                }
+            } catch (error) {
+                showResult('login-result', false, `登录请求失败: ${error.message}`);
+            }
+        }
+
+        // 测试成果库
+        async function testLibrary() {
+            if (!authToken) {
+                showResult('library-result', false, '请先登录');
+                return;
+            }
+
+            try {
+                const response = await apiRequest('/api/teacher/library', 'GET', null, authToken);
+
+                if (response.success) {
+                    const count = response.data?.data?.items?.length || 0;
+                    showResult('library-result', true, `成功获取 ${count} 个成果`, response.data);
+                } else {
+                    showResult('library-result', false, '获取成果库失败', response.data);
+                }
+            } catch (error) {
+                showResult('library-result', false, `API请求失败: ${error.message}`);
+            }
+        }
+
+        // 测试待审批项目
+        async function testPending() {
+            if (!authToken) {
+                showResult('pending-result', false, '请先登录');
+                return;
+            }
+
+            try {
+                const response = await apiRequest('/api/review/pending', 'GET', null, authToken);
+
+                if (response.success) {
+                    const count = response.data?.data?.items?.length || 0;
+                    showResult('pending-result', true, `成功获取 ${count} 个待审批项目`, response.data);
+                } else {
+                    showResult('pending-result', false, '获取待审批项目失败', response.data);
+                }
+            } catch (error) {
+                showResult('pending-result', false, `API请求失败: ${error.message}`);
+            }
+        }
+
+        // 测试用户信息
+        async function testUserInfo() {
+            if (!authToken) {
+                showResult('user-result', false, '请先登录');
+                return;
+            }
+
+            try {
+                const response = await apiRequest('/api/auth/me', 'GET', null, authToken);
+
+                if (response.success) {
+                    showResult('user-result', true, '成功获取用户信息', response.data);
+                } else {
+                    showResult('user-result', false, '获取用户信息失败', response.data);
+                }
+            } catch (error) {
+                showResult('user-result', false, `API请求失败: ${error.message}`);
+            }
+        }
+
+        // 页面加载时检查token
+        window.addEventListener('load', () => {
+            authToken = localStorage.getItem('teacherToken');
+            if (authToken) {
+                console.log('发现已保存的token，已自动加载');
+            }
+        });
+    </script>
+</body>
+</html>

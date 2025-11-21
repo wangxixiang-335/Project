@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试教师项目列表修复</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>教师项目列表修复测试</h1>
+    <div id="results"></div>
+
+    <script>
+        async function testFrontendFix() {
+            const results = document.getElementById('results');
+            
+            function addResult(message, type = 'info') {
+                const div = document.createElement('div');
+                div.className = type;
+                div.innerHTML = message;
+                results.appendChild(div);
+            }
+
+            try {
+                // 1. 教师登录
+                addResult('🔑 正在测试教师登录...');
+                const loginResponse = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'teacher1763449748933@example.com',
+                        password: 'password123'
+                    })
+                });
+                
+                const loginData = await loginResponse.json();
+                
+                if (loginData.success) {
+                    addResult('✅ 教师登录成功', 'success');
+                    const token = loginData.data.token;
+                    
+                    // 2. 测试项目列表
+                    addResult('📋 正在测试教师项目列表...');
+                    const projectsResponse = await fetch('http://localhost:3000/api/teacher/projects', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    const projectsData = await projectsResponse.json();
+                    
+                    if (projectsData.success) {
+                        addResult('✅ 项目列表获取成功', 'success');
+                        
+                        // 3. 测试前端代码逻辑
+                        addResult('🔧 正在测试前端代码逻辑...');
+                        
+                        // 模拟前端处理逻辑
+                        let projects = [];
+                        if (Array.isArray(projectsData.data)) {
+                            projects = projectsData.data;
+                            addResult(`📊 检测到直接数组格式，项目数量: ${projects.length}`);
+                        } else if (projectsData.data.items && Array.isArray(projectsData.data.items)) {
+                            projects = projectsData.data.items;
+                            addResult(`📊 检测到分页格式，项目数量: ${projects.length}`);
+                        }
+                        
+                        if (projects.length > 0) {
+                            addResult('✅ 成功解析项目数据', 'success');
+                            addResult(`<strong>项目详情:</strong><pre>${JSON.stringify(projects, null, 2)}</pre>`);
+                        } else {
+                            addResult('⚠️  项目列表为空', 'error');
+                        }
+                        
+                    } else {
+                        addResult(`❌ 项目列表获取失败: ${projectsData.error}`, 'error');
+                    }
+                } else {
+                    addResult(`❌ 教师登录失败: ${loginData.error}`, 'error');
+                }
+                
+            } catch (error) {
+                addResult(`❌ 测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 页面加载完成后自动运行测试
+        window.addEventListener('load', testFrontendFix);
+    </script>
+</body>
+</html>

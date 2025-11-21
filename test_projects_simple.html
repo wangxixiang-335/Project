@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师项目列表测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; }
+        .success { color: #10b981; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; border: none; border-radius: 5px; background: #667eea; color: white; font-weight: 500; }
+        button:hover { background: #5a67d8; }
+        #console { background: #1f2937; color: #f3f4f6; padding: 15px; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 14px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        .project-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        .project-title { font-weight: bold; color: #2d3748; margin-bottom: 8px; }
+        .project-meta { color: #718096; font-size: 14px; }
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; margin-left: 8px; }
+        .status-0 { background: #fed7d7; color: #c53030; } /* 草稿 */
+        .status-1 { background: #feebc8; color: #dd6b20; } /* 审核中 */
+        .status-2 { background: #c6f6d5; color: #38a169; } /* 已通过 */
+        .status-3 { background: #e2e8f0; color: #4a5568; } /* 已打回 */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 教师项目列表测试</h1>
+        
+        <div class="test-section">
+            <h3>🧪 快速测试</h3>
+            <button onclick="testBasicFunction()">测试基础功能</button>
+            <button onclick="checkContainers()">检查容器</button>
+            <button onclick="testApiDirectly()">直接测试API</button>
+            <button onclick="clearConsole()">清空控制台</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 测试结果</h3>
+            <div id="console">等待测试开始...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>💡 使用说明</h3>
+            <ol>
+                <li>打开浏览器控制台查看详细错误信息</li>
+                <li>确保已登录教师系统</li>
+                <li>确保服务器正在运行</li>
+                <li>点击测试按钮检查功能</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#f3f4f6';
+            console.innerHTML += `[${timestamp}] <span style="color: ${color}">${message}</span>\n`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '控制台已清空\n';
+        }
+
+        function testBasicFunction() {
+            log('=== 基础功能测试 ===');
+            
+            // 检查基本环境
+            if (typeof window.teacherSystem === 'undefined') {
+                log('❌ teacherSystem 未定义', 'error');
+                log('ℹ️  请在教师系统页面中运行此测试', 'info');
+                return;
+            }
+            
+            log('✅ teacherSystem 存在', 'success');
+            
+            // 检查函数
+            const functions = ['loadProjects', 'renderProjects', 'loadMockProjects'];
+            functions.forEach(func => {
+                const exists = typeof window.teacherSystem[func] === 'function';
+                log(`${func}: ${exists ? '存在' : '不存在'}`, exists ? 'success' : 'error');
+            });
+            
+            // 检查项目数据
+            if (window.teacherSystem.projects) {
+                log(`✅ 项目数据存在，数量: ${teacherSystem.projects.length}`, 'success');
+                if (teacherSystem.projects.length > 0) {
+                    log(`📋 第一个项目: ${teacherSystem.projects[0].title}`);
+                }
+            } else {
+                log('⚠️  项目数据不存在', 'warning');
+            }
+        }
+
+        function checkContainers() {
+            log('=== 容器检查 ===');
+            
+            const containers = [
+                'projectManageList',
+                'projectList', 
+                'approvalList',
+                'libraryList'
+            ];
+            
+            containers.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    log(`✅ ${id}: 存在`, 'success');
+                    if (id === 'projectManageList') {
+                        log(`📋 当前内容: ${element.innerHTML.substring(0, 100)}...`);
+                    }
+                } else {
+                    log(`❌ ${id}: 不存在`, 'error');
+                }
+            });
+        }
+
+        async function testApiDirectly() {
+            log('=== 直接API测试 ===');
+            
+            const token = localStorage.getItem('teacherToken') || sessionStorage.getItem('teacherToken');
+            if (!token) {
+                log('❌ 没有token', 'error');
+                return;
+            }
+            
+            const endpoints = [
+                '/teacher/my-projects',
+                '/teacher/projects',
+                '/projects',
+                '/achievements'
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    log(`🔄 测试 ${endpoint}...`);
+                    const response = await fetch(`http://localhost:3000/api${endpoint}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    log(`📊 状态: ${response.status} ${response.statusText}`);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.data) {
+                            log(`✅ ${endpoint}: 成功 (${data.data.length} 条数据)`, 'success');
+                        } else {
+                            log(`⚠️  ${endpoint}: 数据格式问题`, 'warning');
+                        }
+                    } else {
+                        const errorText = await response.text();
+                        log(`❌ ${endpoint}: ${errorText.substring(0, 100)}`, 'error');
+                    }
+                } catch (error) {
+                    log(`❌ ${endpoint}: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // 页面加载完成后自动检查
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🚀 教师项目列表测试页面加载完成');
+            log('ℹ️  请在教师系统页面中测试实际功能');
+        });
+    </script>
+</body>
+</html>
