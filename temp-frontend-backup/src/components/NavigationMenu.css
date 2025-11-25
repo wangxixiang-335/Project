@@ -1,0 +1,121 @@
+/* 导航菜单样式 */
+.navigation-menu {
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  margin-bottom: 24px;
+}
+
+.menu-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  padding: 0 20px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #666;
+  transition: all 0.3s ease;
+  position: relative;
+  border-bottom: 3px solid transparent;
+}
+
+.menu-item:hover {
+  color: #333;
+  background: #f8f9fa;
+}
+
+.menu-item.active {
+  color: #007acc;
+  background: #f0f8ff;
+  border-bottom-color: #007acc;
+  font-weight: 600;
+}
+
+.menu-icon {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .menu-container {
+    padding: 0 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .menu-item {
+    padding: 12px 16px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  
+  .menu-icon {
+    font-size: 16px;
+  }
+  
+  .menu-label {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navigation-menu {
+    margin-bottom: 16px;
+  }
+  
+  .menu-item {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+  
+  .menu-icon {
+    font-size: 14px;
+  }
+  
+  .menu-label {
+    font-size: 11px;
+  }
+}
+
+/* 暗色主题支持 */
+@media (prefers-color-scheme: dark) {
+  .navigation-menu {
+    background: #1a1a1a;
+    border-bottom-color: #333;
+  }
+  
+  .menu-item {
+    color: #ccc;
+  }
+  
+  .menu-item:hover {
+    color: #fff;
+    background: #2a2a2a;
+  }
+  
+  .menu-item.active {
+    color: #4da6ff;
+    background: #1e3a5f;
+    border-bottom-color: #4da6ff;
+  }
+}

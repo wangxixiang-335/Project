@@ -21,7 +21,7 @@ import './components/TeacherManage.css'
 import './components/TeacherLibrary.css'
 import './components/TeacherDashboard.css'
 
-const API_BASE = 'http://localhost:3000/api'
+const API_BASE = '/api'
 
 function App() {
   const [activeTab, setActiveTab] = useState('login')
@@ -71,7 +71,16 @@ function App() {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (response.data.success) {
-        setUser(response.data.data)
+        const userData = response.data.data
+        setUser(userData)
+        
+        // 根据角色设置正确的默认页面
+        if (userData.role === 'teacher') {
+          setActiveTab('teacher-home')
+        } else {
+          setStudentTab('home')
+          setActiveTab('projects')
+        }
       }
     } catch (error) {
       localStorage.removeItem('token')
@@ -112,7 +121,8 @@ function App() {
         if (userData.role === 'teacher') {
           setActiveTab('teacher-home')
         } else {
-          setActiveTab('projects')
+          setStudentTab('home') // 学生跳转到首页
+          setActiveTab('projects') // 保持activeTab为projects
         }
       }
     } catch (error) {

@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* 头部导航 */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 60px;
+        }
+
+        .nav-brand {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 0;
+        }
+
+        .nav-item {
+            position: relative;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 20px 25px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav-link:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .nav-link.active {
+            background-color: rgba(255,255,255,0.2);
+        }
+
+        /* 主容器 */
+        .main-container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        .page-section {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .page-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        /* 表单元素 */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #ddd;
+            color: #555;
+        }
+
+        .btn-outline:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        /* 网格布局 */
+        .grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        .grid-4 {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+
+        /* 通知样式 */
+        .notification-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: #667eea;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .notification-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .notification-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .notification-cover {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            background: #f0f2f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #666;
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #2c3e50;
+        }
+
+        .notification-info {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .notification-status {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .status-approved {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-rejected {
+            background: #ef4444;
+            color: white;
+        }
+
+        .status-pending {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .notification-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: #e5e7eb;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .notification-close:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        /* 表格样式 */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        .data-table td {
+            font-size: 14px;
+        }
+
+        .data-table tr:hover {
+            background: #f8fafc;
+        }
+
+        /* 搜索栏 */
+        .search-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-select {
+            min-width: 150px;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        /* 状态标签 */
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-block;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-approved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-draft {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        /* 操作按钮组 */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* 加载动画 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .nav-menu {
+                flex-direction: column;
+                position: absolute;
+                top: 60px;
+                right: 20px;
+                background: rgba(0,0,0,0.8);
+                border-radius: 8px;
+            }
+
+            .grid-2, .grid-3, .grid-4 {
+                grid-template-columns: 1fr;
+            }
+
+            .search-bar {
+                flex-direction: column;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 头部导航 -->
+    <header class="header">
+        <nav class="nav-container">
+            <div class="nav-brand">教师管理系统</div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a class="nav-link active" data-page="home">首页</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="approval">成果审批</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="publish">成果发布</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="manage">成果管理</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="library">成果查看</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="dashboard">数据看板</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- 主内容区域 -->
+    <main class="main-container">
+        <!-- 首页 -->
+        <section id="home" class="page-section active">
+            <div class="grid grid-2">
+                <!-- 账户信息 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">账户信息</h3>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">头像</label>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 60px; height: 60px; border-radius: 50%; background: #667eea; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                                👤
+                            </div>
+                            <button class="btn btn-outline">更换头像</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="username" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-control" id="email" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">个性签名</label>
+                        <textarea class="form-control" id="signature" rows="3" placeholder="写点什么吧..."></textarea>
+                    </div>
+                    <button class="btn btn-primary" onclick="updateProfile()">保存设置</button>
+                </div>
+
+                <!-- 通知栏 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">通知</h3>
+                        <button class="btn btn-outline" onclick="clearAllNotifications()">全部清除</button>
+                    </div>
+                    
+                    <div class="notification-tabs">
+                        <button class="tab-btn active" data-tab="pending">待审批</button>
+                        <button class="tab-btn" data-tab="approved">通过</button>
+                        <button class="tab-btn" data-tab="rejected">驳回</button>
+                    </div>
+
+                    <div id="notificationList" class="notification-list">
+                        <!-- 通知项将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 成果审批 -->
+        <section id="approval" class="page-section">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">成果审批</h3>
+                </div>
+                
+                <!-- 搜索栏 -->
+                <div class="search-bar">
+                    <select class="form-control search-select" id="approvalClass">
+                        <option value="">全部班级</option>
+                    </select>
+                    <select class="form-control search-select" id="approvalType">
+                        <option value="">全部类型</option>
+                    </select>
+                    <input type="text" class="form-control search-input" id="approvalName" placeholder="搜索名称或姓名">
+                    <button class="btn btn-primary" onclick="searchApprovals()">搜索</button>
+                </div>
+
+                <!-- 审批列表 -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>成果名称</th>
+                                <th>类型</th>
+                                <th>姓名</th>
+                                <th>指导老师</th>
+                                <th>提交时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="approvalList">
+                            <!-- 审批项将通过JavaScript动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 成果发布 -->
+        <section id="publish" class="page-section">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">成果发布</h3>
+                    <div>
+                        <button class="btn btn-outline" onclick="switchEditMode('edit')">编辑</button>
+                        <button class="btn btn-outline" onclick="switchEditMode('preview')">预览</button>
+                    </div>
+                </div>
+
+                <!-- 编辑表单 -->
+                <div id="editForm">
+                    <div class="form-group">
+                        <label class="form-label">标题</label>
+                        <input type="text" class="form-control" id="publishTitle" placeholder="请输入成果标题">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">成果类型</label>
+                        <select class="form-control" id="publishType">
+                            <option value="">请选择类型</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">封面图</label>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 100px; height: 100px; border: 2px dashed #ddd; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999;">
+                                📷 封面预览
+                            </div>
+                            <button class="btn btn-outline">上传封面</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">合作伙伴</label>
+                        <input type="text" class="form-control" id="publishPartners" placeholder="请输入合作伙伴">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">指导老师</label>
+                        <input type="text" class="form-control" id="publishInstructor" placeholder="请输入指导老师">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">内容描述</label>
+                        <div style="border: 1px solid #ddd; border-radius: 6px; min-height: 300px; padding: 12px;" contenteditable="true" id="publishContent">
+                            在这里输入成果内容...
+                        </div>
+                        <div style="margin-top: 8px; display: flex; gap: 8px;">
+                            <button class="btn btn-outline" onclick="aiLayout()">AI布局</button>
+                            <button class="btn btn-outline" onclick="aiPolish()">AI润色</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">演示视频</label>
+                        <input type="url" class="form-control" id="publishVideo" placeholder="请输入视频链接">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">附件上传</label>
+                        <div id="attachmentList" style="display: flex; flex-wrap: wrap; gap: 12px;">
+                            <!-- 附件将动态添加 -->
+                        </div>
+                        <button class="btn btn-outline" onclick="addAttachment()">
+                            <span style="font-size: 18px;">+</span> 添加附件
+                        </button>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button class="btn btn-secondary" onclick="saveDraft()">存草稿</button>
+                        <button class="btn btn-primary" onclick="publishProject()">发布</button>
+                    </div>
+                </div>
+
+                <!-- 预览区域 -->
+                <div id="previewForm" style="display: none;">
+                    <!-- 预览内容将动态生成 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 成果管理 -->
+        <section id="manage" class="page-section">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">成果管理</h3>
+                    <div>
+                        <select class="form-control" style="width: 150px;" id="manageStatus" onchange="filterProjects()">
+                            <option value="">全部成果</option>
+                            <option value="published">已发布</option>
+                            <option value="pending">审核中</option>
+                            <option value="rejected">未通过</option>
+                            <option value="draft">草稿箱</option>
+                        </select>
+                        <input type="text" class="form-control" style="width: 200px; margin-left: 12px;" placeholder="搜索名称" id="manageSearch" onkeyup="filterProjects()">
+                    </div>
+                </div>
+
+                <div id="projectManageList" class="grid grid-3">
+                    <!-- 项目卡片将动态生成 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 成果查看 -->
+        <section id="library" class="page-section">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">成果查看</h3>
+                </div>
+
+                <!-- 成果列表 -->
+                <div class="library-info">
+                    <p style="color: #666; margin-bottom: 15px;">以下是所有已通过审核的成果，您可以查看详细信息。</p>
+                </div>
+
+                <!-- 成果列表 -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>成果名称</th>
+                                <th>分数</th>
+                                <th>类型</th>
+                                <th>学生姓名</th>
+                                <th>指导老师</th>
+                                <th>提交时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="libraryList">
+                            <!-- 成果项将通过JavaScript动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 数据看板 -->
+        <section id="dashboard" class="page-section">
+            <div class="grid grid-2">
+                <!-- 发布量统计图 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">发布量统计图</h3>
+                    </div>
+                    <div style="height: 300px; display: flex; align-items: center; justify-content: center; color: #999;">
+                        📊 图表区域（可集成Chart.js）
+                    </div>
+                </div>
+
+                <!-- 班级成绩分布图 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">班级成绩分布图</h3>
+                        <select class="form-control" style="width: 150px;" id="dashboardClass">
+                            <option value="">选择班级</option>
+                        </select>
+                    </div>
+                    <div style="height: 300px; display: flex; align-items: center; justify-content: center; color: #999;">
+                        📈 图表区域（可集成Chart.js）
+                    </div>
+                </div>
+            </div>
+
+            <!-- 统计数据概览 -->
+            <div class="grid grid-4" style="margin-top: 20px;">
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 32px; color: #667eea; margin-bottom: 8px;">--</div>
+                    <div style="color: #666; font-size: 14px;">总项目数</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 32px; color: #10b981; margin-bottom: 8px;">--</div>
+                    <div style="color: #666; font-size: 14px;">已通过</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 32px; color: #f59e0b; margin-bottom: 8px;">--</div>
+                    <div style="color: #666; font-size: 14px;">待审批</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 32px; color: #ef4444; margin-bottom: 8px;">--</div>
+                    <div style="color: #666; font-size: 14px;">已打回</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 审批弹窗 -->
+    <div id="approvalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">审批操作</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="modalContent">
+                    <!-- 动态内容 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" id="confirmBtn" onclick="confirmApproval()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="teacher.js"></script>
+</body>
+</html>

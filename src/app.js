@@ -59,21 +59,103 @@ app.use(express.urlencoded({ extended: true }))
 
 // 根路径重定向到登录页面
 app.get('/', (req, res) => {
-  res.redirect('/login.html')
+  res.redirect('/login')
 })
 
-// 确保提供正确的登录页面 - 优先从temp-frontend提供
-app.get('/login.html', (req, res) => {
-  res.sendFile('login.html', { root: 'temp-frontend' })
+// 处理前端路由 - 提供React应用的主页面
+app.get('/login', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
 })
 
-// 确保提供正确的教师系统页面
-app.get('/teacher.html', (req, res) => {
-  res.sendFile('teacher.html', { root: 'temp-frontend' })
+app.get('/home', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
 })
 
-// 静态文件服务 - 从 temp-frontend 文件夹提供
-app.use(express.static('temp-frontend', {
+app.get('/register', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+// 教师相关路由
+app.get('/teacher-home', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/achievement-approval', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/achievement-publish', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/achievement-management', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/achievement-view', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+// 管理员相关路由
+app.get('/admin-home', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/news-management', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/achievement-library-management', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/knowledge-base-management', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/carousel-management', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/user-management', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+// 其他前端路由
+app.get('/project-intro', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/project-detail', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/business-process', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/student-info', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/personal-center', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/image-viewer', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/change-password', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+app.get('/forgot-password', (req, res) => {
+  res.sendFile('index.html', { root: 'app_578098177538' })
+})
+
+// 静态文件服务 - 从 app_578098177538 文件夹提供React构建文件
+app.use(express.static('app_578098177538/dist', {
   setHeaders: (res, path) => {
     if (path.endsWith('.html')) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8')
@@ -86,6 +168,10 @@ app.use(express.static('temp-frontend', {
     }
   }
 }))
+
+// 开发环境下的静态文件服务（如果没有构建文件）
+app.use('/src', express.static('app_578098177538/src'))
+app.use('/node_modules', express.static('app_578098177538/node_modules'))
 
 // 路由配置
 app.use('/api/auth', userRoutes)

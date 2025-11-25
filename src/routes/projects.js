@@ -380,4 +380,112 @@ function extractImageUrls(htmlContent) {
   return urls
 }
 
+// 教师直接发布成果（无需审批）
+router.post('/teacher-publish', 
+  authenticateToken, 
+  requireTeacher, 
+  validateRequest(projectCreateSchema), 
+  async (req, res) => {
+    try {
+      console.log('=== 教师成果直接发布开始 ===')
+      console.log('教师ID:', req.user.id)
+      console.log('教师角色:', req.user.role)
+      
+      const { title, content_html, video_url, category } = req.validatedData
+      console.log('发布数据:', { title, content_html: content_html?.substring(0, 100) + '...', video_url, category })
+      
+      // 从HTML内容中提取图片URL
+      const imageUrls = extractImageUrls(content_html)
+      console.log('提取的图片URL:', imageUrls)
+      
+      // 验证图片数量限制
+      if (imageUrls.length > FILE_SIZE_LIMITS.MAX_IMAGES_PER_PROJECT) {
+        console.log('图片数量超限:', imageUrls.length, '>', FILE_SIZE_LIMITS.MAX_IMAGES_PER_PROJECT)
+        return errorResponse(res, ERROR_MESSAGES.PROJECT_LIMIT_EXCEEDED, HTTP_STATUS.BAD_REQUEST)
+      }
+
+      // 获取默认成果类型ID
+      const { data: defaultType } = await supabase
+        .from('achievement_types')
+        .select('id')
+        .limit(1)
+        .single();
+      
+      const defaultTypeId = defaultType?.id || '00000000-0000-0000-0000-000000000000';
+
+      // 教师直接发布成果，状态为已通过（4）
+      console.log('准备创建教师成果...')
+      const achievementData = {
+        publisher_id: req.user.id,
+        title,
+        description: content_html,
+        type_id: category || defaultTypeId,
+        video_url: video_url || '',
+        status: 4,  // 状态值：4 表示已通过（教师直接发布）
+        score: null,
+        created_at: new Date().toISOString()
+      }
+      console.log('成果数据:', achievementData)
+      
+      const { data: achievement, error } = await supabase
+        .from('achievements')
+        .insert(achievementData)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('❌ 教师成果发布错误:', error)
+        return errorResponse(res, `成果发布失败: ${error.message || '数据库错误'}`)
+      }
+
+      console.log('✅ 教师成果发布成功:', achievement)
+
+      // 处理图片附件
+      if (imageUrls.length > 0) {
+        console.log('处理图片附件...')
+        for (let i = 0; i < imageUrls.length; i++) {
+          const { error: attachError } = await supabase
+            .from('achievement_attachments')
+            .insert({
+              achievement_id: achievement.id,
+              file_name: `image_${i + 1}.jpg`,
+              file_url: imageUrls[i],
+              file_size: 1024000
+            });
+          
+          if (attachError) {
+            console.warn('附件创建警告:', attachError.message)
+          }
+        }
+      }
+
+      // 创建审批记录，标记为已通过
+      const { error: auditError } = await supabase
+        .from('approval_records')
+        .insert({
+          achievement_id: achievement.id,
+          reviewer_id: req.user.id,  // 教师自己作为审批人
+          status: 2,  // 2 表示通过（根据数据库现有值）
+          feedback: '',  // 使用feedback字段而不是reject_reason
+          reviewed_at: new Date().toISOString()
+        });
+
+      if (auditError) {
+        console.warn('审批记录创建警告:', auditError.message)
+      }
+
+      return successResponse(res, {
+        project_id: achievement.id,
+        status: 'approved',  // 教师直接发布即为已通过状态
+        message: '成果发布成功'
+      }, '成果发布成功', HTTP_STATUS.CREATED)
+
+    } catch (error) {
+      console.error('❌ 教师成果发布错误:', error)
+      console.error('错误堆栈:', error.stack)
+      return errorResponse(res, '成果发布失败')
+    }
+  }
+)
+
 export default router

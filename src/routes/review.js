@@ -130,197 +130,134 @@ router.post('/:id/audit', authenticateToken, requireTeacher, validateRequest(aud
   try {
     const { id } = req.params
     const { audit_result, reject_reason } = req.validatedData
+    const { score } = req.body // 可选的分数参数
 
-    console.log('审核请求参数:', { id, audit_result, reject_reason })
+    console.log('📋 审核请求详细信息:', { 
+      id, 
+      audit_result, 
+      reject_reason,
+      score,
+      audit_result_type: typeof audit_result,
+      reject_reason_type: typeof reject_reason,
+      score_type: typeof score
+    })
     console.log('用户信息:', { 
       user: req.user, 
       userId: req.user?.id, 
       userRole: req.user?.role 
     })
 
-    // 先尝试从projects_view表查找（兼容旧数据）
+    // 只从achievements表查找，移除projects_view兼容逻辑
     let project = null
-    let isOldProject = false
     let error = null
     
-    const { data: oldProject, error: oldError } = await supabase
-      .from('projects_view')
-      .select('id, status, title')
+    // 首先检查成果是否存在，不限制状态
+    const { data: achievement, error: achievementError } = await supabase
+      .from('achievements')
+      .select('id, status, title, publisher_id')
       .eq('id', id)
-      .eq('status', 'pending') // 字符串状态
       .single()
     
-    if (!oldError && oldProject) {
-      project = oldProject
-      isOldProject = true
-      console.log('✅ 找到待审核项目(projects_view):', project)
-    } else {
-      // 如果projects_view没有找到，尝试从achievements表查找
-      const { data: achievement, error: achievementError } = await supabase
-        .from('achievements')
-        .select('id, status, title')
-        .eq('id', id)
-        .eq('status', 1) // 1 表示待审核
-        .single()
+    if (!achievementError && achievement) {
+      project = achievement
+      console.log('✅ 找到成果(achievements):', project)
       
-      if (!achievementError && achievement) {
-        project = achievement
-        isOldProject = false
-        console.log('✅ 找到待审核成果(achievements):', project)
-      } else {
-        error = achievementError || oldError
+      // 检查状态是否为待审核
+      if (project.status !== 1) {
+        console.log('❌ 成果状态不是待审核，当前状态:', project.status)
+        return errorResponse(res, `成果状态不是待审核，当前状态: ${project.status}`, HTTP_STATUS.BAD_REQUEST)
       }
+    } else {
+      error = achievementError
+      console.log('❌ 未找到成果:', error?.message || '成果不存在')
     }
 
     if (!project) {
-      console.log('❌ 项目/成果检查失败:', error?.message || '项目不存在')
-      return errorResponse(res, '项目不存在或不是待审核状态', HTTP_STATUS.NOT_FOUND)
+      console.log('❌ 成果检查失败:', error?.message || '成果不存在')
+      return errorResponse(res, '成果不存在', HTTP_STATUS.NOT_FOUND)
     }
 
     let updatedProject = null
     
-    if (isOldProject) {
-      // 更新projects_view表（旧数据）
-      const updateData = {
-        status: audit_result === AUDIT_RESULTS.APPROVE ? 'approved' : 'rejected', // 字符串状态
-        auditor_id: userId,
-        audited_at: new Date().toISOString()
-      }
+    // 统一使用achievements表进行更新
+    console.log('📝 更新achievements表数据')
+    
+    let updateData = {
+      status: audit_result === AUDIT_RESULTS.APPROVE ? 2 : 3, // 2已通过/3已打回
+    }
+    
+    // 安全获取用户ID
+    const userId = req.user?.id || 'unknown-user';
+    console.log('使用用户ID:', userId);
 
-      if (audit_result === AUDIT_RESULTS.REJECT) {
-        updateData.reject_reason = reject_reason
-      }
-
-      console.log('📝 更新projects_view数据:', updateData)
-
-      const { data: updated, error: updateError } = await supabase
-        .from('projects')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (updateError) {
-        console.error('❌ 更新项目状态错误:', updateError)
-        throw updateError
-      }
-
-      updatedProject = updated
-      console.log('✅ 项目更新成功:', updatedProject)
-      
-    } else {
-      // 更新achievements表（新数据）
-      let updateData = {
-        status: audit_result === AUDIT_RESULTS.APPROVE ? 2 : 3, // 2已通过/3已打回
-      }
-      
-      // 安全获取用户ID
-      const userId = req.user?.id || 'unknown-user';
-      console.log('使用用户ID:', userId);
-
-      // 添加教师ID（如果字段存在）
-      try {
-        // 先测试instructor_id字段是否存在
-        const testResult = await supabase
-          .from('achievements')
-          .select('instructor_id')
-          .eq('id', id)
-          .single();
-        
-        if (!testResult.error) {
-          updateData.instructor_id = userId;
-        }
-      } catch (testError) {
-        console.log('instructor_id字段不存在，跳过设置');
-      }
-
-      // 处理打回原因（如果reject_reason字段不存在，添加到description）
-      if (audit_result === AUDIT_RESULTS.REJECT) {
-        try {
-          // 先测试reject_reason字段是否存在
-          const testResult = await supabase
-            .from('achievements')
-            .select('reject_reason')
-            .eq('id', id)
-            .single();
-          
-          if (!testResult.error) {
-            updateData.reject_reason = reject_reason;
-          } else {
-            // reject_reason字段不存在，将原因添加到description
-            const { data: currentAchievement } = await supabase
-              .from('achievements')
-              .select('description')
-              .eq('id', id)
-              .single();
-            
-            if (currentAchievement) {
-              updateData.description = (currentAchievement.description || '') + 
-                `
-
---- 审核打回原因 ---
-${reject_reason}`;
-            }
-          }
-        } catch (testError) {
-          // 如果测试失败，默认将原因添加到description
-          const { data: currentAchievement } = await supabase
-            .from('achievements')
-            .select('description')
-            .eq('id', id)
-            .single();
-          
-          if (currentAchievement) {
-            updateData.description = (currentAchievement.description || '') + 
-              `
-
---- 审核打回原因 ---
-${reject_reason}`;
-          }
-        }
-      }
-
-      console.log('📝 更新achievements数据:', updateData)
-
-      const { data: updated, error: updateError } = await supabase
+    // 添加教师ID（如果字段存在）
+    try {
+      // 先测试instructor_id字段是否存在
+      const testResult = await supabase
         .from('achievements')
-        .update(updateData)
+        .select('instructor_id')
         .eq('id', id)
-        .select()
-        .single()
-
-      if (updateError) {
-        console.error('❌ 更新成果状态错误:', updateError)
-        throw updateError
+        .single();
+      
+      if (!testResult.error) {
+        updateData.instructor_id = userId;
       }
-
-      updatedProject = updated
-      console.log('✅ 成果更新成功:', updatedProject)
+    } catch (testError) {
+      console.log('instructor_id字段不存在，跳过设置');
     }
 
-    // 创建审批记录（仅对新系统）
-    if (!isOldProject) {
-      try {
-        // 先测试approval_records表是否存在
-        const testResult = await supabase
-          .from('approval_records')
-          .select('id')
-          .limit(1);
-        
-        if (!testResult.error) {
-          const { error: recordError } = await supabase
-            .from('approval_records')
-            .insert({
-              achievement_id: id,
-              reviewer_id: userId, // 审批人ID
-              status: audit_result === AUDIT_RESULTS.APPROVE ? 1 : 0, // 1通过/0驳回
-              feedback: audit_result === AUDIT_RESULTS.REJECT ? reject_reason : null, // 打回原因作为反馈
-              reviewed_at: new Date().toISOString()
-            });
+    // 如果是通过操作且有分数，更新分数
+    if (audit_result === AUDIT_RESULTS.APPROVE && score !== undefined && score !== null) {
+      const scoreValue = parseInt(score);
+      if (!isNaN(scoreValue) && scoreValue >= 0 && scoreValue <= 100) {
+        updateData.score = scoreValue;
+        console.log('📝 更新分数:', scoreValue);
+      } else {
+        console.log('⚠️ 分数无效，跳过更新:', score);
+      }
+    }
 
-          if (recordError) {
-            console.error('创建审批记录错误:', recordError)
-            console.log('审批记录创建失败，但审核操作已成功')
+    // 注意：achievements表没有reject_reason字段，驳回原因将存储在approval_records表中
+
+    console.log('📝 更新achievements数据:', updateData)
+
+    const { data: updated, error: updateError } = await supabase
+      .from('achievements')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error('❌ 更新成果状态错误:', updateError)
+      throw updateError
+    }
+
+    updatedProject = updated
+    console.log('✅ 成果更新成功:', updatedProject)
+
+    // 创建审批记录
+    try {
+      // 先测试approval_records表是否存在
+      const testResult = await supabase
+        .from('approval_records')
+        .select('id')
+        .limit(1);
+      
+      if (!testResult.error) {
+        const { error: recordError } = await supabase
+          .from('approval_records')
+          .insert({
+            achievement_id: id,
+            reviewer_id: userId, // 审批人ID
+            status: audit_result === AUDIT_RESULTS.APPROVE ? 1 : 0, // 1通过/0驳回
+            feedback: audit_result === AUDIT_RESULTS.REJECT ? (reject_reason || '需要进一步完善') : null, // 打回原因作为反馈，确保有值
+            reviewed_at: new Date().toISOString()
+          });
+
+        if (recordError) {
+          console.error('创建审批记录错误:', recordError)
+          console.log('审批记录创建失败，但审核操作已成功')
           } else {
             console.log('✅ 审批记录创建成功')
           }
@@ -331,15 +268,19 @@ ${reject_reason}`;
         console.error('创建审批记录异常:', error)
         console.log('审批记录创建失败，但审核操作已成功')
       }
-    }
 
-    const message = audit_result === AUDIT_RESULTS.APPROVE ? '项目审核通过' : '项目审核不通过'
+    // 构建返回消息，包含分数信息
+    let message = audit_result === AUDIT_RESULTS.APPROVE ? '项目审核通过' : '项目审核不通过'
+    if (audit_result === AUDIT_RESULTS.APPROVE && updatedProject.score !== null && updatedProject.score !== undefined) {
+      message += `，分数：${updatedProject.score}分`
+    }
 
     return successResponse(res, {
       project_id: updatedProject.id,
       status: updatedProject.status,
       audit_result,
-      reject_reason: audit_result === AUDIT_RESULTS.REJECT ? reject_reason : null
+      reject_reason: audit_result === AUDIT_RESULTS.REJECT ? reject_reason : null,
+      score: updatedProject.score || null
     }, message)
 
   } catch (error) {

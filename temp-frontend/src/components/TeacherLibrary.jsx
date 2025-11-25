@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './TeacherLibrary.css';
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = '/api';
 
 const TeacherLibrary = ({ user }) => {
   const [projects, setProjects] = useState([]);

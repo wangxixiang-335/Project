@@ -127,15 +127,12 @@ router.post('/projects/:id/view', async (req, res) => {
       }, '浏览量统计成功')
     } else {
       // 1小时内已有访问记录，不重复统计
-      const { data: currentProject } = await supabase
-        .from('projects')
-        .select('view_count')
-        .eq('id', id)
-        .single()
-
+      // 注意：achievements表没有view_count字段，返回0
+      console.log(`项目 ${id} 在1小时内已有相同IP的访问记录，不重复统计`)
+      
       return successResponse(res, {
         project_id: id,
-        current_view_count: currentProject?.view_count || 0,
+        current_view_count: 0, // achievements表没有view_count字段
         message: '1小时内已统计过浏览量'
       })
     }

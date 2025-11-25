@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成果审批功能测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { margin: 5px; padding: 8px 15px; cursor: pointer; }
+        #log { background: #f5f5f5; padding: 10px; margin-top: 10px; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>成果审批功能测试</h1>
+    
+    <div class="test-section">
+        <h3>测试步骤：</h3>
+        <ol>
+            <li>确保后端服务器运行在 http://localhost:3000</li>
+            <li>点击"测试API连接"检查网络连接</li>
+            <li>点击"获取待审批列表"检查数据获取</li>
+            <li>查看浏览器控制台获取详细日志</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>测试操作：</h3>
+        <button onclick="testConnection()">测试API连接</button>
+        <button onclick="testPendingList()">获取待审批列表</button>
+        <button onclick="clearLog()">清空日志</button>
+    </div>
+
+    <div class="test-section">
+        <h3>测试结果：</h3>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            logDiv.innerHTML += `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function testConnection() {
+            try {
+                log('正在测试API连接...', 'info');
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`API连接成功: ${JSON.stringify(data)}`, 'success');
+                } else {
+                    log(`API连接失败: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`连接错误: ${error.message}`, 'error');
+                console.error('详细错误:', error);
+            }
+        }
+
+        async function testPendingList() {
+            try {
+                log('正在获取待审批列表...', 'info');
+                
+                // 模拟登录获取token
+                const loginResponse = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'teacher1',
+                        password: '123456'
+                    })
+                });
+
+                if (!loginResponse.ok) {
+                    log('登录失败，请检查教师账号', 'error');
+                    return;
+                }
+
+                const loginData = await loginResponse.json();
+                const token = loginData.data?.token;
+                
+                if (!token) {
+                    log('获取token失败', 'error');
+                    return;
+                }
+
+                log('登录成功，获取待审批列表...', 'success');
+
+                // 获取待审批列表
+                const response = await fetch('/api/teacher/pending-projects?page=1&pageSize=10', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`获取待审批列表成功: ${JSON.stringify(data)}`, 'success');
+                    
+                    if (data.data && data.data.items && data.data.items.length > 0) {
+                        const firstItem = data.data.items[0];
+                        log(`第一个项目ID: ${firstItem.id}, 标题: ${firstItem.title}`, 'info');
+                        
+                        // 测试审批功能（简化版，不测试评分）
+                        testApproval(firstItem.id, token);
+                    } else {
+                        log('没有待审批的项目', 'info');
+                    }
+                } else {
+                    log(`获取待审批列表失败: ${response.status} ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log(`获取待审批列表错误: ${error.message}`, 'error');
+                console.error('详细错误:', error);
+            }
+        }
+
+        async function testApproval(projectId, token) {
+            try {
+                log(`正在测试审批功能 - 项目ID: ${projectId}...`, 'info');
+                
+                // 测试通过（不发送分数，因为后端不支持）
+                const approveResponse = await fetch(`/api/review/${projectId}/audit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        audit_result: 1
+                        // 注意：移除了score字段，因为后端验证模式不支持
+                    })
+                });
+
+                const approveData = await approveResponse.json();
+                
+                if (approveResponse.ok) {
+                    log(`审批通过成功: ${JSON.stringify(approveData)}`, 'success');
+                } else {
+                    log(`审批通过失败: ${approveResponse.status} ${JSON.stringify(approveData)}`, 'error');
+                }
+
+            } catch (error) {
+                log(`审批测试错误: ${error.message}`, 'error');
+                console.error('详细错误:', error);
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // 页面加载时自动测试连接
+        window.onload = function() {
+            log('页面加载完成，准备测试...', 'info');
+        };
+    </script>
+</body>
+</html>

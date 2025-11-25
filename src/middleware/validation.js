@@ -89,6 +89,12 @@ export const auditSchema = Joi.object({
       'string.base': '打回原因必须是字符串',
       'string.max': '打回原因不能超过500个字符'
     })
+  }),
+  score: Joi.number().integer().min(0).max(100).optional().messages({
+    'number.base': '分数必须是数字',
+    'number.integer': '分数必须是整数',
+    'number.min': '分数不能小于0',
+    'number.max': '分数不能大于100'
   })
 })
 

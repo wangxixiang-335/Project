@@ -1,4 +1,4 @@
-import { supabase } from './src/config/supabase.js';
+import { supabase } from '../src/config/supabase.js';
 
 async function checkDatabaseStructure() {
   console.log('🔍 检查数据库实际结构...\n');
