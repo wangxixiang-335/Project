@@ -47,7 +47,7 @@ const AchievementViewPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      const response = await api.get('/teacher/projects', {
+      const response = await api.get(API_ENDPOINTS.TEACHER.STUDENT_ACHIEVEMENTS, {
         page: 1,
         pageSize: 50,
         status: 2 // 只获取已通过的成果

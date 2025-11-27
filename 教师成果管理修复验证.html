@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师成果管理修复验证</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover { background: #0056b3; }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .info { color: #17a2b8; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        .result {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 5px;
+            background: #f8f9fa;
+        }
+        pre {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .status-success { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .status-loading { background: #ffc107; animation: pulse 1s infinite; }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .comparison-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        @media (max-width: 768px) {
+            .grid, .comparison { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔧 教师成果管理修复验证</h1>
+        <p>验证教师成果管理页面是否正确显示教师自己的成果</p>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 API测试</h2>
+        <div class="grid">
+            <div>
+                <h3>🔍 所有成果API</h3>
+                <p class="info">应该显示所有用户的成果</p>
+                <button class="button" onclick="testAllProjects()">测试 /teacher/projects</button>
+                <div id="all-projects-result"></div>
+            </div>
+            <div>
+                <h3>👤 教师个人成果API</h3>
+                <p class="info">应该只显示教师自己的成果</p>
+                <button class="button" onclick="testMyProjects()">测试 /teacher/my-projects</button>
+                <div id="my-projects-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 完整验证</h2>
+        <button class="button" onclick="runFullVerification()">运行完整验证</button>
+        <div id="full-verification-result"></div>
+        
+        <div class="comparison" id="comparison" style="display: none;">
+            <div class="comparison-item">
+                <h4>📋 所有成果数据</h4>
+                <div id="all-projects-data"></div>
+            </div>
+            <div class="comparison-item">
+                <h4>👤 教师个人成果数据</h4>
+                <div id="my-projects-data"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        const TEACHER_TOKEN = 'dev-teacher-token';
+
+        function showResult(elementId, message, isSuccess = true, data = null) {
+            const element = document.getElementById(elementId);
+            const statusClass = isSuccess ? 'status-success' : 'status-error';
+            
+            element.innerHTML = `
+                <div class="result">
+                    <span class="status-indicator ${statusClass}"></span>
+                    <span class="${isSuccess ? 'success' : 'error'}">${message}</span>
+                    ${data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+                </div>
+            `;
+        }
+
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `
+                <div class="result">
+                    <span class="status-indicator status-loading"></span>
+                    <span class="info">测试中...</span>
+                </div>
+            `;
+        }
+
+        async function testAllProjects() {
+            showLoading('all-projects-result');
+            
+            try {
+                const response = await fetch(`${API_BASE}/teacher/projects`, {
+                    headers: { Authorization: `Bearer ${TEACHER_TOKEN}` }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const projects = data.data?.items || data.data || [];
+                    showResult('all-projects-result', 
+                        `✅ 成功！获取到 ${projects.length} 个成果`, 
+                        true,
+                        projects.slice(0, 3).map(p => ({
+                            标题: p.title,
+                            发布者: p.student_name || p.publisher || '未知',
+                            状态: p.status
+                        }))
+                    );
+                } else {
+                    showResult('all-projects-result', `❌ 失败：${data.error}`, false, data);
+                }
+            } catch (error) {
+                showResult('all-projects-result', `❌ 网络错误：${error.message}`, false);
+            }
+        }
+
+        async function testMyProjects() {
+            showLoading('my-projects-result');
+            
+            try {
+                const response = await fetch(`${API_BASE}/teacher/my-projects`, {
+                    headers: { Authorization: `Bearer ${TEACHER_TOKEN}` }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const projects = data.data?.items || data.data || [];
+                    showResult('my-projects-result', 
+                        `✅ 成功！获取到 ${projects.length} 个教师个人成果`, 
+                        true,
+                        projects.slice(0, 3).map(p => ({
+                            标题: p.title,
+                            状态: p.status,
+                            类型: p.project_type,
+                            分数: p.score
+                        }))
+                    );
+                } else {
+                    showResult('my-projects-result', `❌ 失败：${data.error}`, false, data);
+                }
+            } catch (error) {
+                showResult('my-projects-result', `❌ 网络错误：${error.message}`, false);
+            }
+        }
+
+        async function runFullVerification() {
+            showLoading('full-verification-result');
+            
+            try {
+                // 并行测试两个API
+                const [allRes, myRes] = await Promise.all([
+                    fetch(`${API_BASE}/teacher/projects`, {
+                        headers: { Authorization: `Bearer ${TEACHER_TOKEN}` }
+                    }).then(res => res.json()),
+                    fetch(`${API_BASE}/teacher/my-projects`, {
+                        headers: { Authorization: `Bearer ${TEACHER_TOKEN}` }
+                    }).then(res => res.json())
+                ]);
+
+                const allProjects = allRes.data?.items || allRes.data || [];
+                const myProjects = myRes.data?.items || myRes.data || [];
+
+                // 修复验证
+                const isFixed = myProjects.length <= allProjects.length;
+                const hasProperSeparation = myProjects.length !== allProjects.length || allProjects.length === 0;
+
+                let statusMessage = '';
+                let statusClass = '';
+                
+                if (isFixed && hasProperSeparation) {
+                    statusMessage = '🎉 修复成功！教师成果管理页面现在正确显示数据分离';
+                    statusClass = 'success';
+                } else {
+                    statusMessage = '⚠️ 需要进一步检查：数据分离可能不正确';
+                    statusClass = 'warning';
+                }
+
+                document.getElementById('full-verification-result').innerHTML = `
+                    <div class="result">
+                        <span class="status-indicator ${isFixed ? 'status-success' : 'status-error'}"></span>
+                        <span class="${statusClass}">${statusMessage}</span>
+                    </div>
+                `;
+
+                // 显示详细对比
+                document.getElementById('comparison').style.display = 'grid';
+                
+                document.getElementById('all-projects-data').innerHTML = `
+                    <p><strong>总数：</strong>${allProjects.length}</p>
+                    <pre>${JSON.stringify(allProjects.slice(0, 2).map(p => ({
+                        标题: p.title,
+                        发布者: p.student_name || '未知',
+                        状态: p.status
+                    })), null, 2)}</pre>
+                `;
+
+                document.getElementById('my-projects-data').innerHTML = `
+                    <p><strong>总数：</strong>${myProjects.length}</p>
+                    <pre>${JSON.stringify(myProjects.slice(0, 2).map(p => ({
+                        标题: p.title,
+                        状态: p.status,
+                        类型: p.project_type
+                    })), null, 2)}</pre>
+                `;
+
+            } catch (error) {
+                showResult('full-verification-result', `❌ 验证失败：${error.message}`, false);
+            }
+        }
+
+        // 页面加载时自动运行验证
+        window.onload = () => {
+            setTimeout(runFullVerification, 1000);
+        };
+    </script>
+</body>
+</html>

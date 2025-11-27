@@ -50,6 +50,8 @@ export const API_ENDPOINTS = {
     DASHBOARD: '/teacher/dashboard',
     NOTIFICATIONS: '/teacher/notifications',
     PROJECTS: '/teacher/projects',
+    MY_PROJECTS: '/teacher/my-projects',
+    STUDENT_ACHIEVEMENTS: '/teacher/student-achievements',
     STUDENTS: '/teacher/students',
   },
   

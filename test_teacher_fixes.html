@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师功能修复测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .loading { background-color: #fff3cd; color: #856404; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 教师功能修复测试</h1>
+    
+    <div class="test-section">
+        <h2>1. 成果管理页面测试</h2>
+        <p>应该显示教师自己的成果（只显示教师发布的成果）</p>
+        <button onclick="testTeacherProjects()">测试教师个人成果API</button>
+        <div id="teacher-projects-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 成果查看页面测试</h2>
+        <p>应该显示所有学生的成果（排除草稿状态）</p>
+        <button onclick="testStudentAchievements()">测试学生成果查看API</button>
+        <div id="student-achievements-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 认证测试</h2>
+        <button onclick="testAuth()">测试认证状态</button>
+        <div id="auth-result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001/api';
+        
+        // 模拟教师token（开发模式）
+        const TEACHER_TOKEN = 'dev-teacher-token';
+        
+        async function makeRequest(url, options = {}) {
+            const defaultOptions = {
+                headers: {
+                    'Authorization': `Bearer ${TEACHER_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            const response = await fetch(API_BASE + url, { ...defaultOptions, ...options });
+            return response.json();
+        }
+        
+        function showResult(elementId, data, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `
+                <div class="result ${isSuccess ? 'success' : 'error'}">
+                    <h4>${isSuccess ? '✅ 成功' : '❌ 失败'}</h4>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+        }
+        
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = '<div class="result loading">🔄 测试中...</div>';
+        }
+        
+        async function testTeacherProjects() {
+            showLoading('teacher-projects-result');
+            
+            try {
+                const data = await makeRequest('/teacher/my-projects?page=1&pageSize=10');
+                
+                if (data.success) {
+                    const projects = data.data?.items || data.data || [];
+                    showResult('teacher-projects-result', {
+                        message: 'API调用成功',
+                        totalCount: projects.length,
+                        projects: projects.map(p => ({
+                            title: p.title,
+                            status: p.status,
+                            project_type: p.project_type,
+                            score: p.score
+                        }))
+                    }, true);
+                } else {
+                    showResult('teacher-projects-result', {
+                        message: 'API返回失败',
+                        data: data
+                    }, false);
+                }
+            } catch (error) {
+                showResult('teacher-projects-result', {
+                    message: '网络错误',
+                    error: error.message
+                }, false);
+            }
+        }
+        
+        async function testStudentAchievements() {
+            showLoading('student-achievements-result');
+            
+            try {
+                const data = await makeRequest('/teacher/student-achievements?page=1&pageSize=10');
+                
+                if (data.success) {
+                    const projects = data.data?.items || data.data || [];
+                    showResult('student-achievements-result', {
+                        message: 'API调用成功',
+                        totalCount: projects.length,
+                        projects: projects.slice(0, 3).map(p => ({
+                            title: p.title,
+                            student_name: p.student_name,
+                            status: p.status,
+                            project_type: p.project_type,
+                            score: p.score
+                        }))
+                    }, true);
+                } else {
+                    showResult('student-achievements-result', {
+                        message: 'API返回失败',
+                        data: data
+                    }, false);
+                }
+            } catch (error) {
+                showResult('student-achievements-result', {
+                    message: '网络错误',
+                    error: error.message
+                }, false);
+            }
+        }
+        
+        async function testAuth() {
+            showLoading('auth-result');
+            
+            try {
+                const data = await makeRequest('/teacher/stats');
+                
+                if (data.success) {
+                    showResult('auth-result', {
+                        message: '认证成功',
+                        stats: data.data
+                    }, true);
+                } else {
+                    showResult('auth-result', {
+                        message: '认证失败',
+                        data: data
+                    }, false);
+                }
+            } catch (error) {
+                showResult('auth-result', {
+                    message: '网络错误或服务器未启动',
+                    error: error.message
+                }, false);
+            }
+        }
+        
+        // 页面加载时自动测试认证
+        window.onload = () => {
+            testAuth();
+        };
+    </script>
+</body>
+</html>

@@ -55,13 +55,13 @@ const TeacherManage = ({ user }) => {
       if (response.data.success) {
         let projectsData = [];
         
-        // 处理不同的数据格式
-        if (Array.isArray(response.data.data)) {
+        // 处理分页响应格式
+        if (response.data.data && response.data.data.items) {
+          projectsData = response.data.data.items;
+        } else if (Array.isArray(response.data.data)) {
           projectsData = response.data.data;
-        } else if (response.data.data && response.data.data.items) {
-          projectsData = response.data.data.items;
-        } else if (response.data.data && Array.isArray(response.data.data.items)) {
-          projectsData = response.data.data.items;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          projectsData = response.data.data;
         }
         
         console.log(`✅ 获取到 ${projectsData.length} 个教师个人成果`);

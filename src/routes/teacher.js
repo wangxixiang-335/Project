@@ -7,6 +7,16 @@ import { PROJECT_STATUS, HTTP_STATUS, ERROR_MESSAGES } from '../config/constants
 
 const router = express.Router()
 
+// 项目类型映射函数
+const getProjectType = (typeId) => {
+  const typeMap = {
+    '2dc62667-7b1d-443b-9315-1dfd89c83f21': '项目',
+    '5f18c811-0a39-465b-ab4f-5db179deeed6': '论文',
+    'ece36ff7-1bd5-4a81-a2a7-59fa0722cb07': '软件作品'
+  }
+  return typeMap[typeId] || '未分类'
+}
+
 // 教师获取所有项目列表
 router.get('/projects', authenticateToken, requireTeacher, validateRequest(paginationSchema), async (req, res) => {
   try {
@@ -252,6 +262,8 @@ router.get('/my-projects', authenticateToken, requireTeacher, validateRequest(pa
     const offset = (page - 1) * pageSize
     const teacherId = req.user.id
 
+    console.log('🔍 获取教师个人成果，教师ID:', teacherId)
+
     // 获取教师发布的成果总数
     const { count, error: countError } = await supabase
       .from('achievements')
@@ -262,17 +274,23 @@ router.get('/my-projects', authenticateToken, requireTeacher, validateRequest(pa
       throw countError
     }
 
-    // 获取教师发布的成果列表（简化查询，避免关联错误）
+    console.log('📊 教师个人成果总数:', count)
+
+    // 获取教师发布的成果列表
     const { data: achievements, error } = await supabase
       .from('achievements')
       .select(`
         id,
         title,
         description,
-        status,
         type_id,
+        status,
         score,
-        created_at
+        publisher_id,
+        instructor_id,
+        created_at,
+        cover_url,
+        video_url
       `)
       .eq('publisher_id', teacherId)
       .order('created_at', { ascending: false })
@@ -281,6 +299,8 @@ router.get('/my-projects', authenticateToken, requireTeacher, validateRequest(pa
     if (error) {
       throw error
     }
+
+    console.log('📋 查询到教师个人成果数量:', achievements?.length || 0)
 
     // 获取类型信息（可选）
     let typeMap = {}
@@ -472,17 +492,41 @@ router.get('/student-achievements', authenticateToken, requireTeacher, validateR
     const { page, pageSize } = req.validatedData
     const offset = (page - 1) * pageSize
 
+    console.log('🔍 获取所有学生成果列表（教师查看用）')
+
+    // 首先获取所有学生用户ID（role = 1）
+    const { data: studentUsers, error: studentError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('role', 1) // role为1表示学生
+
+    if (studentError) {
+      console.error('获取学生用户列表失败:', studentError)
+      throw studentError
+    }
+
+    const studentIds = studentUsers?.map(u => u.id) || []
+    console.log('👨‍🎓 学生用户ID列表:', studentIds)
+
+    if (studentIds.length === 0) {
+      console.log('⚠️ 系统中没有学生用户')
+      return paginatedResponse(res, [], 0, page, pageSize)
+    }
+
     // 获取所有学生成果总数（排除草稿状态）
     const { count, error: countError } = await supabase
       .from('achievements')
       .select('*', { count: 'exact', head: true })
+      .in('publisher_id', studentIds)
       .neq('status', 0) // 排除草稿状态
 
     if (countError) {
       throw countError
     }
 
-    // 获取所有学生成果列表（简化查询，避免复杂的关联查询错误）
+    console.log('📊 学生成果总数（排除草稿）:', count)
+
+    // 获取所有学生成果列表
     const { data: achievements, error } = await supabase
       .from('achievements')
       .select(`
@@ -494,8 +538,11 @@ router.get('/student-achievements', authenticateToken, requireTeacher, validateR
         score,
         publisher_id,
         instructor_id,
-        created_at
+        created_at,
+        cover_url,
+        video_url
       `)
+      .in('publisher_id', studentIds) // 只获取学生的成果
       .neq('status', 0) // 排除草稿状态
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
@@ -503,6 +550,8 @@ router.get('/student-achievements', authenticateToken, requireTeacher, validateR
     if (error) {
       throw error
     }
+
+    console.log('📋 查询到学生成果数量:', achievements?.length || 0)
 
     // 获取用户信息
     const publisherIds = [...new Set(achievements.map(a => a.publisher_id))]

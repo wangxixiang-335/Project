@@ -101,5 +101,10 @@ export const auditSchema = Joi.object({
 // 分页参数验证
 export const paginationSchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
-  pageSize: Joi.number().integer().min(1).max(100).default(10)
+  pageSize: Joi.number().integer().min(1).max(100).default(10),
+  status: Joi.number().integer().min(0).max(3).optional().allow('all'), // 0草稿, 1待审核, 2已通过, 3已打回
+  className: Joi.string().optional(), // 班级筛选
+  projectType: Joi.string().optional(), // 项目类型筛选
+  studentName: Joi.string().optional(), // 学生姓名筛选
+  projectName: Joi.string().optional() // 项目名称筛选
 })

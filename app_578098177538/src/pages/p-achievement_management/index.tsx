@@ -66,8 +66,8 @@ const AchievementManagement: React.FC = () => {
       let formattedAchievements: Achievement[] = [];
       
       if (userRole === 'teacher') {
-        // 教师查看所有学生成果
-        response = await api.get('/teacher/projects', {
+        // 教师查看自己的成果
+        response = await api.get(API_ENDPOINTS.TEACHER.MY_PROJECTS, {
           page: 1,
           pageSize: 50
         });
@@ -92,10 +92,11 @@ const AchievementManagement: React.FC = () => {
             return {
               id: item.project_id?.toString() || item.id?.toString(),
               title: item.title || '未知项目',
-              publishDate: item.submitted_at ? new Date(item.submitted_at).toLocaleDateString() : '未知时间',
+              publishDate: item.created_at ? new Date(item.created_at).toLocaleDateString() : '未知时间',
               status,
               category: '科技',
-              studentName: item.student_name || '未知学生'
+              coverImage: item.cover_image || undefined,
+              rejectReason: item.reject_reason || undefined
             };
           });
         }
@@ -331,7 +332,7 @@ const AchievementManagement: React.FC = () => {
                 <h3 className="text-lg font-semibold text-text-primary">
                   {(() => {
                     const currentUser = getCurrentUser();
-                    return currentUser.role === 'teacher' ? '学生成果列表' : '我的成果';
+                    return currentUser.role === 'teacher' ? '教师成果列表' : '我的成果';
                   })()}
                 </h3>
                 <span className="text-sm text-text-muted">
