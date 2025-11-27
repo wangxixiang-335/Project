@@ -167,13 +167,48 @@ const RegisterPage: React.FC = () => {
     setIsRegistering(true);
 
     try {
-      // 模拟注册请求
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // 注册成功后跳转到登录页
-      navigate('/login');
+      // 调用注册API
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: formData.username.trim(),
+          email: formData.email.trim(),
+          password: formData.password.trim(),
+          role: currentPort // 使用当前选择的角色
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // 注册成功，保存token和用户信息
+        if (result.data.token) {
+          localStorage.setItem('token', result.data.token);
+          localStorage.setItem('userInfo', JSON.stringify({
+            user_id: result.data.user_id,
+            email: result.data.email,
+            username: result.data.username,
+            role: result.data.role
+          }));
+        }
+        
+        // 根据角色跳转到对应页面
+        const redirectMap = {
+          'student': '/home',
+          'teacher': '/teacher-home',
+          'admin': '/admin-home'
+        };
+        
+        navigate(redirectMap[currentPort] || '/login');
+      } else {
+        showRegisterErrorMessage(result.error || '注册失败，请稍后再试');
+      }
     } catch (error) {
-      showRegisterErrorMessage('注册失败，请稍后再试');
+      console.error('注册错误:', error);
+      showRegisterErrorMessage('网络错误，请检查网络连接');
     } finally {
       setIsRegistering(false);
     }

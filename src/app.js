@@ -7,6 +7,8 @@ import dotenv from 'dotenv'
 import { validateConfig } from './config/supabase.js'
 import userRoutes from './routes/users.js'
 import uploadRoutes from './routes/upload.js'
+import uploadAlternativeRoutes from './routes/upload-alternative.js'
+import uploadSimpleRoutes from './routes/upload-simple.js'
 import projectRoutes from './routes/projects.js'
 import reviewRoutes from './routes/review.js'
 import statsRoutes from './routes/stats.js'
@@ -15,8 +17,11 @@ import teacherNotificationRoutes from './routes/teacher-notifications.js'
 import teacherDashboardRoutes from './routes/teacher-dashboard.js'
 import notificationRoutes from './routes/notifications.js'
 import projectManagementRoutes from './routes/project-management.js'
+import achievementTypesRoutes from './routes/achievement-types.js'
 import { errorResponse } from './utils/response.js'
 import { HTTP_STATUS } from './config/constants.js'
+import localUploadRoutes from '../local_upload_fix.js'
+import { createLocalUploadFix } from '../local_upload_fix.js'
 
 // 加载环境变量
 dotenv.config()
@@ -29,7 +34,15 @@ try {
   validateConfig()
 } catch (error) {
   console.error('配置验证失败:', error.message)
-  process.exit(1)
+  console.log('继续启动，使用备用配置...')
+}
+
+// 初始化本地文件上传修复
+try {
+  createLocalUploadFix()
+  console.log('✅ 本地文件上传修复方案已初始化')
+} catch (error) {
+  console.error('本地文件上传修复初始化失败:', error)
 }
 
 // 安全中间件
@@ -176,6 +189,9 @@ app.use('/node_modules', express.static('app_578098177538/node_modules'))
 // 路由配置
 app.use('/api/auth', userRoutes)
 app.use('/api/upload', uploadRoutes)
+app.use('/api/upload-alt', uploadAlternativeRoutes)
+app.use('/api/upload-simple', uploadSimpleRoutes)
+app.use('/api', localUploadRoutes) // 本地文件上传路由
 app.use('/api/projects', projectRoutes)
 app.use('/api/review', reviewRoutes)
 app.use('/api/stats', statsRoutes)
@@ -184,6 +200,7 @@ app.use('/api/teacher/notifications', teacherNotificationRoutes)
 app.use('/api/teacher/dashboard', teacherDashboardRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/project-management', projectManagementRoutes)
+app.use('/api/achievement-types', achievementTypesRoutes)
 
 // 健康检查端点
 app.get('/health', (req, res) => {

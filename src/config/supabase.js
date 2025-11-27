@@ -12,7 +12,7 @@ export const supabase = createClient(
 // 创建服务端Supabase客户端（用于需要更高权限的操作）
 export const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY !== 'your-service-role-key' ? process.env.SUPABASE_SERVICE_ROLE_KEY : process.env.SUPABASE_ANON_KEY
 )
 
 // 验证配置

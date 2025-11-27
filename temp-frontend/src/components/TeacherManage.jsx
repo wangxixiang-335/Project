@@ -52,12 +52,29 @@ const TeacherManage = ({ user }) => {
 
       console.log('📋 教师个人成果API响应:', response.data);
 
-      if (response.data.success && response.data.data) {
-        const projectsData = Array.isArray(response.data.data) ? response.data.data : [];
+      if (response.data.success) {
+        let projectsData = [];
+        
+        // 处理不同的数据格式
+        if (Array.isArray(response.data.data)) {
+          projectsData = response.data.data;
+        } else if (response.data.data && response.data.data.items) {
+          projectsData = response.data.data.items;
+        } else if (response.data.data && Array.isArray(response.data.data.items)) {
+          projectsData = response.data.data.items;
+        }
+        
         console.log(`✅ 获取到 ${projectsData.length} 个教师个人成果`);
+        
+        // 如果没有真实数据，显示友好的提示信息
+        if (projectsData.length === 0) {
+          setMessage('📝 您还没有发布任何成果，点击"成果发布"开始创建您的第一个成果');
+        } else {
+          setMessage(''); // 清除错误信息
+        }
+        
         setProjects(projectsData);
         filterProjects(projectsData, activeTab, searchTerm);
-        setMessage(''); // 清除错误信息
       } else {
         console.warn('⚠️ 教师个人成果API返回数据格式无效:', response.data);
         setMessage('数据格式错误');
@@ -71,43 +88,51 @@ const TeacherManage = ({ user }) => {
         name: error.name
       });
       
-      // 使用模拟数据作为后备（匹配数据库状态码）
-      console.log('🔄 使用模拟数据作为后备');
+      // 使用模拟数据作为后备（教师发布的成果）
+      console.log('🔄 使用教师个人成果模拟数据作为后备');
       const mockProjects = [
         {
           id: '1',
-          title: '机器学习算法研究',
+          title: '深度学习在图像识别中的应用研究',
+          description: '本研究探讨了深度学习技术在图像识别领域的最新进展',
           project_type: '论文',
-          status: 3, // 已打回
+          status: 2, // 已通过
           cover_image: null,
-          created_at: '2024-01-10T08:00:00Z',
-          reject_reason: '研究方法描述不够详细，需要补充实验数据和分析过程',
-          score: 85
+          created_at: '2024-11-15T10:30:00Z',
+          reject_reason: null,
+          score: 92,
+          type_id: 1
         },
         {
           id: '2',
-          title: 'Web应用开发',
+          title: '智能校园管理系统开发',
+          description: '基于Web技术开发的校园综合管理平台',
           project_type: '项目',
           status: 2, // 已通过
           cover_image: null,
           created_at: '2024-01-12T10:30:00Z',
-          score: 92
+          score: 88,
+          type_id: 2
         },
         {
           id: '3',
           title: '数据可视化工具',
+          description: '交互式数据分析和可视化平台',
           project_type: '项目',
           status: 1, // 待审核
           cover_image: null,
-          created_at: '2024-01-15T14:20:00Z'
+          created_at: '2024-11-17T14:20:00Z',
+          type_id: 2
         },
         {
           id: '4',
-          title: '移动应用设计',
+          title: '移动应用UI设计方案',
+          description: '现代移动应用的界面设计理念和实现方案',
           project_type: '设计',
           status: 0, // 草稿
           cover_image: null,
-          created_at: '2024-01-18T16:45:00Z'
+          created_at: '2024-11-18T16:45:00Z',
+          type_id: 3
         }
       ];
       setProjects(mockProjects);

@@ -1,4 +1,5 @@
 import express from 'express'
+import Joi from 'joi'
 import { supabase } from '../config/supabase.js'
 import { authenticateToken } from '../middleware/auth.js'
 import { validateRequest, paginationSchema } from '../middleware/validation.js'
@@ -140,6 +141,74 @@ router.post('/projects/:id/view', async (req, res) => {
   } catch (error) {
     console.error('浏览量统计错误:', error)
     return errorResponse(res, '浏览量统计失败')
+  }
+})
+
+// 获取学生项目统计（用于学生信息页面）
+router.get('/projects', authenticateToken, validateRequest(Joi.object({
+  user_id: Joi.string().required()
+})), async (req, res) => {
+  try {
+    const { user_id } = req.validatedData
+
+    // 验证权限：学生只能查看自己的统计
+    if (req.user.role === USER_ROLES.STUDENT && req.user.id !== user_id) {
+      return errorResponse(res, '无权查看其他用户统计', HTTP_STATUS.FORBIDDEN)
+    }
+
+    // 获取学生项目和统计信息
+    const { data: achievements, error } = await supabase
+      .from('achievements')
+      .select('status, score, type_id, created_at')
+      .eq('publisher_id', user_id)
+
+    if (error) {
+      throw error
+    }
+
+    // 计算统计数据
+    const totalProjects = achievements?.length || 0
+    const approvedProjects = achievements?.filter(a => a.status === 2).length || 0
+    const pendingProjects = achievements?.filter(a => a.status === 1).length || 0
+    const rejectedProjects = achievements?.filter(a => a.status === 3).length || 0
+    
+    const completionRate = totalProjects > 0 ? Math.round((approvedProjects / totalProjects) * 100) : 0
+    
+    // 计算平均分
+    const scoredProjects = achievements?.filter(a => a.score && a.score > 0) || []
+    const averageScore = scoredProjects.length > 0 
+      ? Math.round(scoredProjects.reduce((sum, a) => sum + a.score, 0) / scoredProjects.length)
+      : 0
+
+    // 项目类型分布
+    const typeDistribution = {}
+    achievements?.forEach(achievement => {
+      const type = achievement.type_id || 'other'
+      typeDistribution[type] = (typeDistribution[type] || 0) + 1
+    })
+
+    // 最近项目分数趋势
+    const recentScores = achievements
+      ?.filter(a => a.score && a.score > 0)
+      ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      ?.slice(0, 8)
+      ?.reverse()
+      ?.map(a => a.score) || []
+
+    return successResponse(res, {
+      totalProjects,
+      approvedProjects,
+      pendingProjects,
+      rejectedProjects,
+      completionRate,
+      averageScore,
+      typeDistribution,
+      recentScores
+    })
+
+  } catch (error) {
+    console.error('获取学生项目统计错误:', error)
+    return errorResponse(res, '获取统计数据失败')
   }
 })
 

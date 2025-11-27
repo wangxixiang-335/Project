@@ -87,7 +87,10 @@ export const authenticateToken = async (req, res, next) => {
     }
 
     // 使用Supabase验证token
+    console.log('🔍 正在验证token:', token.substring(0, 10) + '...')
     const { data: { user }, error } = await supabase.auth.getUser(token)
+    
+    console.log('Supabase验证结果:', { user: !!user, error: error?.message })
     
     if (error || !user) {
       // 如果Supabase验证失败，尝试从数据库获取用户信息作为后备

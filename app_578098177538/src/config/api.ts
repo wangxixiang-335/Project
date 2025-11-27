@@ -33,6 +33,7 @@ export const API_ENDPOINTS = {
     UPDATE: '/projects/:id',
     DELETE: '/projects/:id',
     SUBMIT: '/projects/submit',
+    TEACHER_PUBLISH: '/projects/teacher-publish',
   },
   
   // 审核相关
@@ -57,6 +58,12 @@ export const API_ENDPOINTS = {
     FILE: '/upload',
     IMAGE: '/upload/image',
     VIDEO: '/upload/video',
+    TEACHER_IMAGE: '/upload/teacher-image',
+    TEACHER_IMAGE_ALT: '/upload-alt/teacher-image-alt',
+    TEACHER_IMAGE_SERVICE: '/upload-alt/teacher-image-service',
+    GENERAL_IMAGE: '/upload/general-image',
+    BASE64_IMAGE: '/upload/base64-image',
+    BASE64_SIMPLE: '/upload-simple/base64-simple',
   },
   
   // 统计相关

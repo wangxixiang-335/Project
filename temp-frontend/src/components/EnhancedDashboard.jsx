@@ -20,10 +20,31 @@ const EnhancedDashboard = ({ user }) => {
       });
       
       if (response.data.success) {
-        setStats(response.data.data);
+        const data = response.data.data;
+        // 确保数据结构正确
+        if (typeof data === 'object' && data !== null) {
+          setStats(data);
+        } else {
+          console.warn('统计数据格式不正确:', data);
+          setStats({
+            total_projects: 0,
+            approved_count: 0,
+            rejected_count: 0,
+            pending_count: 0,
+            draft_count: 0
+          });
+        }
       }
     } catch (error) {
       console.error('获取统计数据失败:', error);
+      // 设置默认统计数据
+      setStats({
+        total_projects: 0,
+        approved_count: 0,
+        rejected_count: 0,
+        pending_count: 0,
+        draft_count: 0
+      });
     }
   };
 
@@ -37,7 +58,9 @@ const EnhancedDashboard = ({ user }) => {
       
       if (response.data.success) {
         const trendsData = response.data.data || [];
-        const validTrends = trendsData.filter(t => t && t.project_id).map(t => ({
+        // 确保trendsData是数组
+        const dataArray = Array.isArray(trendsData) ? trendsData : trendsData.items || [];
+        const validTrends = dataArray.filter(t => t && t.project_id).map(t => ({
           ...t,
           score: null
         }));

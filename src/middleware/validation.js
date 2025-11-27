@@ -58,8 +58,8 @@ export const projectCreateSchema = Joi.object({
     'any.required': '标题是必填项'
   }),
   content_html: Joi.string().allow('').default(''),
-  video_url: Joi.string().uri().allow('').default('').messages({
-    'string.uri': '视频URL格式不正确'
+  video_url: Joi.string().allow('').default('').messages({
+    'string.base': '封面图URL必须是字符串'
   }),
   category: Joi.string().optional().allow('').default('')
 })

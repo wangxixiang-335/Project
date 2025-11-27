@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师数据看板测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background-color: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover { background-color: #5a6fd8; }
+        .button-secondary {
+            background-color: #6c757d;
+        }
+        .button-secondary:hover { background-color: #5a6268; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+            font-size: 12px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 教师数据看板API测试</h1>
+        
+        <div class="status info">
+            <strong>📋 测试说明：</strong><br>
+            此页面用于测试新的教师数据看板API功能<br>
+            <strong>功能要求：</strong> 发布量统计图 + 成绩折线图 + AI分析<br>
+            <strong>API端点：</strong><br>
+            • 发布统计：GET /api/teacher/dashboard/publish-stats<br>
+            • 成绩数据：GET /api/teacher/student-achievements
+        </div>
+
+        <button onclick="testPublishStats()">📊 测试发布统计API</button>
+        <button onclick="testScoreData()">📈 测试成绩数据API</button>
+        <button onclick="testAllAPIs()">🚀 测试所有API</button>
+        <button onclick="clearResults()" class="button-secondary">🧹 清除结果</button>
+        <button onclick="checkFrontend()">🌐 检查前端页面</button>
+
+        <div id="results"></div>
+
+        <div id="statsDisplay" style="margin-top: 30px;">
+            <h3>📊 数据统计概览</h3>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">发布统计数据</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">成绩数据条数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">平均成绩</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">AI分析状态</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {
+            publishStats: null,
+            scoreData: null
+        };
+
+        async function testPublishStats() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status info">正在测试发布统计API...</div>';
+            
+            try {
+                const response = await fetch('/api/teacher/dashboard/publish-stats', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer dev-teacher-token',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                console.log('📊 发布统计API响应:', data);
+
+                if (response.ok && data.success) {
+                    testResults.publishStats = data.data || [];
+                    resultsDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ 发布统计API测试成功！<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>数据条数:</strong> ${testResults.publishStats.length}
+                        </div>
+                    `;
+                    updateStatsDisplay();
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ 发布统计API调用失败<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>Error:</strong> ${data.message || '未知错误'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('❌ 发布统计API测试失败:', error);
+                resultsDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ 发布统计API测试失败<br>
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function testScoreData() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status info">正在测试成绩数据API...</div>';
+            
+            try {
+                const response = await fetch('/api/teacher/student-achievements?page=1&pageSize=50', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer dev-teacher-token',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                console.log('📈 成绩数据API响应:', data);
+
+                if (response.ok && data.success) {
+                    const items = data.data?.items || data.data || [];
+                    testResults.scoreData = items;
+                    resultsDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ 成绩数据API测试成功！<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>数据条数:</strong> ${items.length}
+                        </div>
+                    `;
+                    updateStatsDisplay();
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ 成绩数据API调用失败<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>Error:</strong> ${data.message || '未知错误'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('❌ 成绩数据API测试失败:', error);
+                resultsDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ 成绩数据API测试失败<br>
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function testAllAPIs() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status info">正在测试所有API...</div>';
+            
+            await testPublishStats();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testScoreData();
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">发布统计数据</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">成绩数据条数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">平均成绩</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">AI分析状态</div>
+                </div>
+            `;
+            testResults = { publishStats: null, scoreData: null };
+        }
+
+        function updateStatsDisplay() {
+            const publishCount = testResults.publishStats ? testResults.publishStats.length : '--';
+            const scoreCount = testResults.scoreData ? testResults.scoreData.length : '--';
+            
+            let avgScore = '--';
+            if (testResults.scoreData && testResults.scoreData.length > 0) {
+                const scoredItems = testResults.scoreData.filter(item => item.score);
+                if (scoredItems.length > 0) {
+                    avgScore = (scoredItems.reduce((sum, item) => sum + item.score, 0) / scoredItems.length).toFixed(1);
+                }
+            }
+            
+            let aiStatus = '⚠️ 数据不足';
+            if ((publishCount > 0 || scoreCount > 0) && publishCount !== '--' && scoreCount !== '--') {
+                aiStatus = '✅ 可生成分析';
+            } else if (publishCount === '--' && scoreCount === '--') {
+                aiStatus = '⏳ 等待测试';
+            }
+
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${publishCount}</div>
+                    <div class="stat-label">发布统计数据</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${scoreCount}</div>
+                    <div class="stat-label">成绩数据条数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${avgScore}</div>
+                    <div class="stat-label">平均成绩</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${aiStatus}</div>
+                    <div class="stat-label">AI分析状态</div>
+                </div>
+            `;
+        }
+
+        function checkFrontend() {
+            const resultsDiv = document.getElementById('results');
+            
+            if (window.location.port === '5176') {
+                resultsDiv.innerHTML = `
+                    <div class="status success">
+                        ✅ 前端服务正常<br>
+                        <strong>当前端口:</strong> ${window.location.port}<br>
+                        <strong>前端地址:</strong> http://localhost:5176<br>
+                        <strong>建议操作:</strong> 
+                        <button onclick="window.open('http://localhost:5176', '_blank')" style="margin-left: 10px;">
+                            🌐 打开教师系统
+                        </button>
+                    </div>
+                `;
+            } else if (window.location.port === '5173') {
+                resultsDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ 错误！您在访问旧的前端服务<br>
+                        <strong>当前端口:</strong> ${window.location.port} (旧版本)<br>
+                        <strong>正确地址:</strong> http://localhost:5176<br>
+                        <strong>建议操作:</strong> 请访问 http://localhost:5176
+                    </div>
+                `;
+            } else {
+                resultsDiv.innerHTML = `
+                    <div class="status info">
+                        ℹ️ 当前前端服务端口: ${window.location.port}<br>
+                        <strong>建议访问:</strong> http://localhost:5176
+                    </div>
+                `;
+            }
+        }
+
+        // 页面加载时自动检查
+        window.onload = function() {
+            checkFrontend();
+        };
+    </script>
+</body>
+</html>

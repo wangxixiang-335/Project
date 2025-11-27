@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生数据看板API测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover { background-color: #218838; }
+        .button-secondary {
+            background-color: #6c757d;
+        }
+        .button-secondary:hover { background-color: #5a6268; }
+        .button-primary {
+            background-color: #007bff;
+        }
+        .button-primary:hover { background-color: #0056b3; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        .data-display {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .error-detail {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 学生数据看板API测试</h1>
+        
+        <div class="status info">
+            <strong>📋 测试说明：</strong><br>
+            此页面用于测试学生数据看板相关API，解决 `projects.filter is not a function` 错误<br>
+            <strong>测试目标API：</strong><br>
+            • 学生统计：GET /api/stats/student<br>
+            • 学生趋势：GET /api/project-management/stats/student/trends
+        </div>
+
+        <button onclick="testStudentStats()">📊 测试学生统计API</button>
+        <button onclick="testStudentTrends()">📈 测试学生趋势API</button>
+        <button onclick="testAllAPIs()">🚀 测试所有API</button>
+        <button onclick="clearResults()" class="button-secondary">🧹 清除结果</button>
+        <button onclick="checkFrontend()" class="button-primary">🌐 检查前端页面</button>
+
+        <div id="results"></div>
+
+        <div id="errorAnalysis" class="error-detail" style="display: none;">
+            <h3>🔍 错误分析</h3>
+            <div id="errorDetails"></div>
+        </div>
+
+        <div id="statsDisplay" style="margin-top: 30px;">
+            <h3>📊 学生数据统计概览</h3>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">总项目数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">已通过</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">待审批</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">趋势数据</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="dataDisplay" class="data-display" style="display: none;">
+            <h3>📋 API响应数据结构</h3>
+            <div id="dataStructure"></div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {
+            studentStats: null,
+            studentTrends: null
+        };
+
+        // 获取token
+        function getToken() {
+            return localStorage.getItem('token') || localStorage.getItem('teacherToken') || 'dev-teacher-token';
+        }
+
+        async function testStudentStats() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status info">正在测试学生统计API...</div>';
+            
+            try {
+                const response = await fetch('/api/stats/student', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + getToken(),
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                console.log('📊 学生统计API响应:', data);
+
+                if (response.ok && data.success) {
+                    testResults.studentStats = data.data;
+                    resultsDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ 学生统计API测试成功！<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>数据类型:</strong> ${typeof data.data}<br>
+                            <strong>是否为对象:</strong> ${typeof data.data === 'object' && !Array.isArray(data.data)}<br>
+                            <strong>数据键值:</strong> ${Object.keys(data.data || {}).join(', ')}
+                        </div>
+                    `;
+                    updateStatsDisplay();
+                    showDataStructure('学生统计API', data);
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ 学生统计API调用失败<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>Error:</strong> ${data.message || '未知错误'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('❌ 学生统计API测试失败:', error);
+                resultsDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ 学生统计API测试失败<br>
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+                showErrorAnalysis(error);
+            }
+        }
+
+        async function testStudentTrends() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status info">正在测试学生趋势API...</div>';
+            
+            try {
+                const response = await fetch('/api/project-management/stats/student/trends', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + getToken(),
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                console.log('📈 学生趋势API响应:', data);
+
+                if (response.ok && data.success) {
+                    const trendsData = data.data || [];
+                    testResults.studentTrends = Array.isArray(trendsData) ? trendsData : trendsData.items || [];
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ 学生趋势API测试成功！<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>原始数据类型:</strong> ${typeof data.data}<br>
+                            <strong>处理数据类型:</strong> ${Array.isArray(testResults.studentTrends) ? 'Array' : 'Not Array'}<br>
+                            <strong>数据条数:</strong> ${testResults.studentTrends.length}
+                        </div>
+                    `;
+                    updateStatsDisplay();
+                    showDataStructure('学生趋势API', data);
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ 学生趋势API调用失败<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>Error:</strong> ${data.message || '未知错误'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('❌ 学生趋势API测试失败:', error);
+                resultsDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ 学生趋势API测试失败<br>
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+                showErrorAnalysis(error);
+            }
+        }
+
+        async function testAllAPIs() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status info">正在测试所有学生看板API...</div>';
+            
+            await testStudentStats();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testStudentTrends();
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('errorAnalysis').style.display = 'none';
+            document.getElementById('dataDisplay').style.display = 'none';
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">总项目数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">已通过</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">待审批</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">趋势数据</div>
+                </div>
+            `;
+            testResults = { studentStats: null, studentTrends: null };
+        }
+
+        function updateStatsDisplay() {
+            const stats = testResults.studentStats || {};
+            const trendsCount = testResults.studentTrends ? testResults.studentTrends.length : '--';
+            
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${stats.total_projects || '--'}</div>
+                    <div class="stat-label">总项目数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.approved_count || '--'}</div>
+                    <div class="stat-label">已通过</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.pending_count || '--'}</div>
+                    <div class="stat-label">待审批</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${trendsCount}</div>
+                    <div class="stat-label">趋势数据</div>
+                </div>
+            `;
+        }
+
+        function showDataStructure(apiName, data) {
+            const dataDisplay = document.getElementById('dataDisplay');
+            const dataStructure = document.getElementById('dataStructure');
+            
+            dataDisplay.style.display = 'block';
+            dataStructure.innerHTML = `
+                <h4>${apiName} 响应结构:</h4>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+        }
+
+        function showErrorAnalysis(error) {
+            const errorAnalysis = document.getElementById('errorAnalysis');
+            const errorDetails = document.getElementById('errorDetails');
+            
+            errorAnalysis.style.display = 'block';
+            errorDetails.innerHTML = `
+                <p><strong>错误类型:</strong> ${error.name}</p>
+                <p><strong>错误消息:</strong> ${error.message}</p>
+                <p><strong>错误堆栈:</strong></p>
+                <pre>${error.stack}</pre>
+                <p><strong>可能的解决方案:</strong></p>
+                <ul>
+                    <li>检查API端点是否正确</li>
+                    <li>验证token是否有效</li>
+                    <li>确认服务器正在运行</li>
+                    <li>检查网络连接</li>
+                </ul>
+            `;
+        }
+
+        function checkFrontend() {
+            const resultsDiv = document.getElementById('results');
+            
+            if (window.location.port === '5176') {
+                resultsDiv.innerHTML = `
+                    <div class="status success">
+                        ✅ 前端服务正常<br>
+                        <strong>当前端口:</strong> ${window.location.port}<br>
+                        <strong>前端地址:</strong> http://localhost:5176<br>
+                        <strong>建议操作:</strong> 
+                        <button onclick="window.open('http://localhost:5176', '_blank')" style="margin-left: 10px;">
+                            🌐 打开学生系统
+                        </button>
+                    </div>
+                `;
+            } else if (window.location.port === '5173') {
+                resultsDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ 错误！您在访问旧的前端服务<br>
+                        <strong>当前端口:</strong> ${window.location.port} (旧版本)<br>
+                        <strong>正确地址:</strong> http://localhost:5176<br>
+                        <strong>建议操作:</strong> 请访问 http://localhost:5176
+                    </div>
+                `;
+            } else {
+                resultsDiv.innerHTML = `
+                    <div class="status info">
+                        ℹ️ 当前前端服务端口: ${window.location.port}<br>
+                        <strong>建议访问:</strong> http://localhost:5176
+                    </div>
+                `;
+            }
+        }
+
+        // 页面加载时自动检查
+        window.onload = function() {
+            checkFrontend();
+        };
+    </script>
+</body>
+</html>

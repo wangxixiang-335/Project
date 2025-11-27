@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师成果发布测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: inline-block; width: 120px; font-weight: bold; }
+        input, textarea, select { width: 300px; padding: 5px; }
+        textarea { height: 100px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .preview { margin-top: 10px; max-width: 200px; }
+        .preview img { max-width: 100%; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 教师成果发布功能测试</h1>
+        
+        <div id="status"></div>
+        
+        <h2>1. 教师登录</h2>
+        <div class="form-group">
+            <label>邮箱:</label>
+            <input type="email" id="email" value="teacher@example.com">
+        </div>
+        <div class="form-group">
+            <label>密码:</label>
+            <input type="password" id="password" value="password123">
+        </div>
+        <button onclick="login()">登录</button>
+        
+        <h2>2. 成果发布</h2>
+        <div class="form-group">
+            <label>标题:</label>
+            <input type="text" id="title" value="测试成果标题">
+        </div>
+        <div class="form-group">
+            <label>封面图URL:</label>
+            <input type="text" id="coverImage" value="https://picsum.photos/400/300?random=1" 
+                   onchange="previewCoverImage()">
+            <div id="coverPreview" class="preview"></div>
+        </div>
+        <div class="form-group">
+            <label>内容:</label>
+            <textarea id="content"><p>这是一个测试成果的内容。</p><p>包含封面图上传功能测试。</p></textarea>
+        </div>
+        <div class="form-group">
+            <label>成果类型:</label>
+            <select id="category">
+                <option value="f47ac10b-58cc-4372-a567-0e02b2c3d479">科技创新</option>
+                <option value="a1b2c3d4-e5f6-7890-abcd-ef1234567890">艺术创作</option>
+            </select>
+        </div>
+        <button onclick="publish()" id="publishBtn" disabled>发布成果</button>
+        
+        <h2>3. 测试结果</h2>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let authToken = null;
+        let userId = null;
+
+        function log(message, type = 'info') {
+            const status = document.getElementById('status');
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            status.appendChild(div);
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            log('正在登录...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    authToken = data.data.token;
+                    userId = data.data.user.id;
+                    log('✅ 登录成功！用户ID: ' + userId, 'success');
+                    document.getElementById('publishBtn').disabled = false;
+                } else {
+                    log('❌ 登录失败: ' + data.error, 'error');
+                }
+            } catch (error) {
+                log('❌ 登录错误: ' + error.message, 'error');
+            }
+        }
+
+        function previewCoverImage() {
+            const coverUrl = document.getElementById('coverImage').value;
+            const preview = document.getElementById('coverPreview');
+            
+            if (coverUrl) {
+                preview.innerHTML = `<img src="${coverUrl}" alt="封面预览" onerror="this.style.display='none'">`;
+            } else {
+                preview.innerHTML = '';
+            }
+        }
+
+        async function publish() {
+            if (!authToken) {
+                log('请先登录', 'error');
+                return;
+            }
+            
+            const title = document.getElementById('title').value;
+            const coverImage = document.getElementById('coverImage').value;
+            const content = document.getElementById('content').value;
+            const category = document.getElementById('category').value;
+            
+            log('正在发布成果...');
+            log('发布数据: ' + JSON.stringify({
+                title,
+                video_url: coverImage, // 封面图通过video_url字段传递
+                content_html: content,
+                category
+            }, null, 2));
+            
+            try {
+                const response = await fetch(`${API_BASE}/projects/teacher-publish`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        title,
+                        video_url: coverImage, // 封面图通过video_url字段传递
+                        content_html: content,
+                        category
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    log('✅ 成果发布成功！', 'success');
+                    log('📋 成果ID: ' + data.data.project_id, 'success');
+                    log('📊 状态: ' + data.data.status, 'success');
+                    log('✅ 封面图已保存: ' + coverImage, 'success');
+                    
+                    // 验证数据库中的封面图
+                    verifyCoverImage(data.data.project_id, coverImage);
+                } else {
+                    log('❌ 发布失败: ' + data.error, 'error');
+                    if (data.details) {
+                        log('错误详情: ' + JSON.stringify(data.details), 'error');
+                    }
+                }
+            } catch (error) {
+                log('❌ 发布错误: ' + error.message, 'error');
+            }
+        }
+
+        async function verifyCoverImage(projectId, expectedCoverUrl) {
+            log('正在验证数据库中的封面图...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/projects/${projectId}`, {
+                    method: 'GET',
+                    headers: { 
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    const actualCoverUrl = data.data.cover_url;
+                    if (actualCoverUrl === expectedCoverUrl) {
+                        log('✅ 封面图URL已正确保存到数据库！', 'success');
+                        log('📊 数据库中的封面图: ' + actualCoverUrl, 'success');
+                    } else {
+                        log('❌ 封面图URL不匹配', 'error');
+                        log('期望: ' + expectedCoverUrl, 'error');
+                        log('实际: ' + actualCoverUrl, 'error');
+                    }
+                } else {
+                    log('❌ 无法验证封面图: ' + (data.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                log('❌ 验证失败: ' + error.message, 'error');
+            }
+        }
+
+        // 页面加载时预览默认封面图
+        window.onload = function() {
+            previewCoverImage();
+        };
+    </script>
+</body>
+</html>

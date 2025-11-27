@@ -30,10 +30,26 @@ const AchievementManagement: React.FC = () => {
 
   // 设置页面标题
   useEffect(() => {
-    const originalTitle = document.title;
-    document.title = '软院项目通 - 成果管理';
-    return () => { document.title = originalTitle; };
+    const currentUser = getCurrentUser();
+    const title = currentUser.role === 'teacher' ? '成果管理' : '我的成果';
+    document.title = `软院项目通 - ${title}`;
+    return () => { document.title = '软院项目通'; };
   }, []);
+
+  // 获取用户信息
+  const getCurrentUser = () => {
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      return {
+        role: userInfo.role || 'student',
+        userId: userInfo.user_id || userInfo.id,
+        username: userInfo.username || userInfo.email || '用户'
+      };
+    } catch (error) {
+      console.error('获取用户信息失败:', error);
+      return { role: 'student', userId: null, username: '用户' };
+    }
+  };
 
   // 获取成果列表
   const fetchAchievements = async () => {
@@ -41,42 +57,86 @@ const AchievementManagement: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      const response = await api.get('/teacher/projects', {
-        page: 1,
-        pageSize: 50
-      });
+      // 获取当前用户信息
+      const currentUser = getCurrentUser();
+      const userRole = currentUser.role;
+      const userId = currentUser.userId;
       
-      if (response.data && Array.isArray(response.data.items)) {
-        const formattedAchievements = response.data.items.map((item: any) => {
-          let status: FilterType = 'pending';
-          switch (item.status) {
-            case 1:
-              status = 'pending';
-              break;
-            case 2:
-              status = 'published';
-              break;
-            case 3:
-              status = 'rejected';
-              break;
-            default:
-              status = 'pending';
-          }
-          
-          return {
-            id: item.project_id?.toString() || item.id?.toString(),
-            title: item.title || '未知项目',
-            publishDate: item.submitted_at ? new Date(item.submitted_at).toLocaleDateString() : '未知时间',
-            status,
-            category: '科技',
-            studentName: item.student_name || '未知学生'
-          };
+      let response;
+      let formattedAchievements: Achievement[] = [];
+      
+      if (userRole === 'teacher') {
+        // 教师查看所有学生成果
+        response = await api.get('/teacher/projects', {
+          page: 1,
+          pageSize: 50
         });
         
-        setAchievements(formattedAchievements);
+        if (response.data && Array.isArray(response.data.items)) {
+          formattedAchievements = response.data.items.map((item: any) => {
+            let status: FilterType = 'pending';
+            switch (item.status) {
+              case 1:
+                status = 'pending';
+                break;
+              case 2:
+                status = 'published';
+                break;
+              case 3:
+                status = 'rejected';
+                break;
+              default:
+                status = 'pending';
+            }
+            
+            return {
+              id: item.project_id?.toString() || item.id?.toString(),
+              title: item.title || '未知项目',
+              publishDate: item.submitted_at ? new Date(item.submitted_at).toLocaleDateString() : '未知时间',
+              status,
+              category: '科技',
+              studentName: item.student_name || '未知学生'
+            };
+          });
+        }
       } else {
-        setAchievements([]);
+        // 学生查看自己的成果
+        response = await api.get('/projects', {
+          page: 1,
+          pageSize: 50
+        });
+        
+        if (response.data && Array.isArray(response.data.items)) {
+          formattedAchievements = response.data.items.map((item: any) => {
+            let status: FilterType = 'pending';
+            switch (item.status) {
+              case 1:
+                status = 'pending';
+                break;
+              case 2:
+                status = 'published';
+                break;
+              case 3:
+                status = 'rejected';
+                break;
+              default:
+                status = 'pending';
+            }
+            
+            return {
+              id: item.project_id?.toString() || item.id?.toString(),
+              title: item.title || '我的成果',
+              publishDate: item.created_at ? new Date(item.created_at).toLocaleDateString() : '未知时间',
+              status,
+              category: '科技',
+              coverImage: item.cover_url || undefined,
+              rejectReason: item.reject_reason || undefined
+            };
+          });
+        }
       }
+      
+      setAchievements(formattedAchievements);
     } catch (error: any) {
       console.error('获取成果列表失败:', error);
       setError(error.message || '获取数据失败');
@@ -173,7 +233,12 @@ const AchievementManagement: React.FC = () => {
               >
                 <i className="fas fa-bars text-xl"></i>
               </button>
-              <h2 className="text-xl font-semibold text-text-primary hidden md:block">成果管理</h2>
+              <h2 className="text-xl font-semibold text-text-primary hidden md:block">
+                {(() => {
+                  const currentUser = getCurrentUser();
+                  return currentUser.role === 'teacher' ? '成果管理' : '我的成果';
+                })()}
+              </h2>
             </div>
             <div className="flex items-center space-x-4">
               <button 
@@ -263,7 +328,12 @@ const AchievementManagement: React.FC = () => {
             {/* 成果列表 */}
             <div className="bg-white rounded-xl shadow-card p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-text-primary">我的成果</h3>
+                <h3 className="text-lg font-semibold text-text-primary">
+                  {(() => {
+                    const currentUser = getCurrentUser();
+                    return currentUser.role === 'teacher' ? '学生成果列表' : '我的成果';
+                  })()}
+                </h3>
                 <span className="text-sm text-text-muted">
                   共 {filteredAchievements.length} 个成果
                 </span>
@@ -282,7 +352,26 @@ const AchievementManagement: React.FC = () => {
               ) : filteredAchievements.length === 0 ? (
                 <div className="text-center py-12">
                   <i className="fas fa-inbox text-4xl text-muted mb-4"></i>
-                  <p className="text-text-secondary">暂无成果</p>
+                  <p className="text-text-secondary mb-4">
+                    {(() => {
+                      const currentUser = getCurrentUser();
+                      return currentUser.role === 'teacher' 
+                        ? '暂无成果' 
+                        : '您还没有提交任何成果';
+                    })()}
+                  </p>
+                  {(() => {
+                    const currentUser = getCurrentUser();
+                    return currentUser.role === 'student' && (
+                      <Link 
+                        to="/project-intro" 
+                        className="inline-flex items-center px-4 py-2 bg-secondary text-white rounded-lg hover:bg-accent transition-colors"
+                      >
+                        <i className="fas fa-plus mr-2"></i>
+                        发布新成果
+                      </Link>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

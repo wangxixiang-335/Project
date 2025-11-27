@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师成果管理API测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover { background-color: #0056b3; }
+        .button-secondary {
+            background-color: #6c757d;
+        }
+        .button-secondary:hover { background-color: #5a6268; }
+        .button-success {
+            background-color: #28a745;
+        }
+        .button-success:hover { background-color: #218838; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        .projects-display {
+            margin-top: 20px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .project-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+        .status-published { background-color: #28a745; }
+        .status-pending { background-color: #ffc107; }
+        .status-draft { background-color: #6c757d; }
+        .status-rejected { background-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 教师成果管理API测试</h1>
+        
+        <div class="status info">
+            <strong>📋 测试说明：</strong><br>
+            测试教师个人成果管理功能，确保显示的是教师自己的成果，而不是学生成果<br>
+            <strong>目标API：</strong> GET /api/teacher/my-projects<br>
+            <strong>预期结果：</strong> 返回该教师发布的所有成果列表
+        </div>
+
+        <button onclick="testTeacherMyProjects()">📋 测试教师个人成果API</button>
+        <button onclick="testStudentAchievements()">👥 对比：测试学生成果API</button>
+        <button onclick="compareAPIs()">🔍 对比两个API</button>
+        <button onclick="clearResults()" class="button-secondary">🧹 清除结果</button>
+        <button onclick="checkFrontend()" class="button-success">🌐 检查前端页面</button>
+
+        <div id="results"></div>
+
+        <div id="statsDisplay" style="margin-top: 30px;">
+            <h3>📊 API对比统计</h3>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">教师个人成果数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">学生成果数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">数据差异</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">功能状态</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="projectsDisplay" class="projects-display" style="display: none;">
+            <h3>📋 教师个人成果列表</h3>
+            <div id="projectsList"></div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {
+            teacherProjects: null,
+            studentProjects: null
+        };
+
+        // 获取token
+        function getToken() {
+            return localStorage.getItem('teacherToken') || localStorage.getItem('token') || 'dev-teacher-token';
+        }
+
+        // 测试教师个人成果API
+        async function testTeacherMyProjects() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status info">正在测试教师个人成果API...</div>';
+            
+            try {
+                const response = await fetch('/api/teacher/my-projects?page=1&pageSize=20', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + getToken(),
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                console.log('📋 教师个人成果API响应:', data);
+
+                if (response.ok && data.success) {
+                    let projectsData = [];
+                    
+                    // 处理不同的数据格式
+                    if (Array.isArray(data.data)) {
+                        projectsData = data.data;
+                    } else if (data.data && data.data.items) {
+                        projectsData = data.data.items;
+                    } else if (data.data && Array.isArray(data.data.items)) {
+                        projectsData = data.data.items;
+                    }
+                    
+                    testResults.teacherProjects = projectsData;
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ 教师个人成果API测试成功！<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>数据类型:</strong> ${Array.isArray(projectsData) ? 'Array' : 'Not Array'}<br>
+                            <strong>成果数量:</strong> ${projectsData.length}
+                        </div>
+                    `;
+                    
+                    if (projectsData.length > 0) {
+                        displayProjects(projectsData);
+                    }
+                    
+                    updateStatsDisplay();
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ 教师个人成果API调用失败<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>Error:</strong> ${data.message || '未知错误'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('❌ 教师个人成果API测试失败:', error);
+                resultsDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ 教师个人成果API测试失败<br>
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 测试学生成果API（用于对比）
+        async function testStudentAchievements() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status info">正在测试学生成果API（用于对比）...</div>';
+            
+            try {
+                const response = await fetch('/api/teacher/student-achievements?page=1&pageSize=20', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + getToken(),
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                console.log('👥 学生成果API响应:', data);
+
+                if (response.ok && data.success) {
+                    const items = data.data?.items || data.data || [];
+                    testResults.studentProjects = items;
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ 学生成果API测试成功！<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>成果数量:</strong> ${items.length}
+                        </div>
+                    `;
+                    updateStatsDisplay();
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ 学生成果API调用失败<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>Error:</strong> ${data.message || '未知错误'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('❌ 学生成果API测试失败:', error);
+                resultsDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ 学生成果API测试失败<br>
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 对比两个API
+        async function compareAPIs() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status info">正在对比教师个人成果和学生成果API...</div>';
+            
+            await testTeacherMyProjects();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testStudentAchievements();
+            
+            // 分析差异
+            const teacherCount = testResults.teacherProjects ? testResults.teacherProjects.length : 0;
+            const studentCount = testResults.studentProjects ? testResults.studentProjects.length : 0;
+            
+            let analysisMessage = '';
+            if (teacherCount === 0 && studentCount > 0) {
+                analysisMessage = '<div class="status warning">⚠️ 警告：教师个人成果为空，但学生成果有数据。这是正常的，说明该教师还没有发布自己的成果。</div>';
+            } else if (teacherCount > 0 && studentCount > 0) {
+                analysisMessage = '<div class="status success">✅ 正常：教师个人成果和学生成果都有数据，两个API工作正常。</div>';
+            } else if (teacherCount === 0 && studentCount === 0) {
+                analysisMessage = '<div class="status info">ℹ️ 信息：数据库中暂无任何成果数据。</div>';
+            } else {
+                analysisMessage = '<div class="status success">✅ 正常：API功能正常，数据符合预期。</div>';
+            }
+            
+            resultsDiv.innerHTML += analysisMessage;
+        }
+
+        // 显示项目列表
+        function displayProjects(projects) {
+            const projectsDisplay = document.getElementById('projectsDisplay');
+            const projectsList = document.getElementById('projectsList');
+            
+            projectsDisplay.style.display = 'block';
+            
+            const statusText = {
+                0: '草稿',
+                1: '待审核', 
+                2: '已通过',
+                3: '已打回'
+            };
+            
+            const statusClass = {
+                0: 'status-draft',
+                1: 'status-pending',
+                2: 'status-published', 
+                3: 'status-rejected'
+            };
+            
+            projectsList.innerHTML = projects.map(project => `
+                <div class="project-item">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="flex: 1;">
+                            <h4>${project.title}</h4>
+                            <p style="color: #666; margin: 5px 0;">${project.description || '暂无描述'}</p>
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <span style="color: #666;">类型: ${project.project_type || '未分类'}</span>
+                                <span style="color: #666;">分数: ${project.score || '未评分'}</span>
+                            </div>
+                        </div>
+                        <span class="status-badge ${statusClass[project.status]}">
+                            ${statusText[project.status]}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('projectsDisplay').style.display = 'none';
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">教师个人成果数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">学生成果数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">数据差异</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">--</div>
+                    <div class="stat-label">功能状态</div>
+                </div>
+            `;
+            testResults = { teacherProjects: null, studentProjects: null };
+        }
+
+        function updateStatsDisplay() {
+            const teacherCount = testResults.teacherProjects ? testResults.teacherProjects.length : '--';
+            const studentCount = testResults.studentProjects ? testResults.studentProjects.length : '--';
+            const difference = (teacherCount !== '--' && studentCount !== '--') ? 
+                (teacherCount - studentCount) : '--';
+            
+            let status = '⏳ 未测试';
+            if (teacherCount !== '--' && studentCount !== '--') {
+                status = '✅ 正常';
+            }
+            
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${teacherCount}</div>
+                    <div class="stat-label">教师个人成果数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${studentCount}</div>
+                    <div class="stat-label">学生成果数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${difference}</div>
+                    <div class="stat-label">数据差异</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${status}</div>
+                    <div class="stat-label">功能状态</div>
+                </div>
+            `;
+        }
+
+        function checkFrontend() {
+            const resultsDiv = document.getElementById('results');
+            
+            if (window.location.port === '5176') {
+                resultsDiv.innerHTML = `
+                    <div class="status success">
+                        ✅ 前端服务正常<br>
+                        <strong>当前端口:</strong> ${window.location.port}<br>
+                        <strong>前端地址:</strong> http://localhost:5176<br>
+                        <strong>建议操作:</strong> 
+                        <button onclick="window.open('http://localhost:5176', '_blank')" style="margin-left: 10px;">
+                            🌐 打开教师系统
+                        </button>
+                    </div>
+                `;
+            } else if (window.location.port === '5173') {
+                resultsDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ 错误！您在访问旧的前端服务<br>
+                        <strong>当前端口:</strong> ${window.location.port} (旧版本)<br>
+                        <strong>正确地址:</strong> http://localhost:5176<br>
+                        <strong>建议操作:</strong> 请访问 http://localhost:5176
+                    </div>
+                `;
+            } else {
+                resultsDiv.innerHTML = `
+                    <div class="status info">
+                        ℹ️ 当前前端服务端口: ${window.location.port}<br>
+                        <strong>建议访问:</strong> http://localhost:5176
+                    </div>
+                `;
+            }
+        }
+
+        // 页面加载时自动检查
+        window.onload = function() {
+            checkFrontend();
+        };
+    </script>
+</body>
+</html>

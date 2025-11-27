@@ -1,4 +1,5 @@
 import express from 'express'
+import Joi from 'joi'
 import { supabase } from '../config/supabase.js'
 import { authenticateToken, requireStudent, requireTeacher } from '../middleware/auth.js'
 import { validateRequest, projectCreateSchema, projectUpdateSchema, paginationSchema } from '../middleware/validation.js'
@@ -42,12 +43,15 @@ router.post('/',
 
       // 创建成果（原项目）
       console.log('准备创建成果...')
+      // 注意：前端将封面图URL放在video_url字段中传递
+      const cover_url = video_url || null
       const achievementData = {
         publisher_id: req.user.id,  // 字段名变更：user_id -> publisher_id
         title,
         description: content_html,  // 字段名变更：content_html -> description
         type_id: category || defaultTypeId,  // 字段名变更：category -> type_id
-        video_url,
+        cover_url: cover_url,  // 使用封面图URL
+        video_url: '',  // 视频URL暂时为空
         status: 1,  // 状态值变更：'pending' -> 1 (待审批)
         created_at: new Date().toISOString()
       }
@@ -316,7 +320,12 @@ router.get('/teacher/:id', authenticateToken, requireTeacher, async (req, res) =
 })
 
 // 学生获取个人成果列表（原项目列表）
-router.get('/', authenticateToken, requireStudent, validateRequest(paginationSchema), async (req, res) => {
+router.get('/', authenticateToken, requireStudent, validateRequest(Joi.object({
+  page: Joi.number().integer().min(1).default(1),
+  pageSize: Joi.number().integer().min(1).max(100).default(10),
+  student_id: Joi.string().optional(),
+  status: Joi.string().optional().valid('all', 'pending', 'approved', 'rejected')
+})), async (req, res) => {
   try {
     const { page, pageSize } = req.validatedData
     const offset = (page - 1) * pageSize
@@ -394,6 +403,9 @@ router.post('/teacher-publish',
       const { title, content_html, video_url, category } = req.validatedData
       console.log('发布数据:', { title, content_html: content_html?.substring(0, 100) + '...', video_url, category })
       
+      // 注意：前端将封面图URL放在video_url字段中传递
+      const cover_url = video_url || null
+      
       // 从HTML内容中提取图片URL
       const imageUrls = extractImageUrls(content_html)
       console.log('提取的图片URL:', imageUrls)
@@ -420,8 +432,9 @@ router.post('/teacher-publish',
         title,
         description: content_html,
         type_id: category || defaultTypeId,
-        video_url: video_url || '',
-        status: 4,  // 状态值：4 表示已通过（教师直接发布）
+        cover_url: cover_url,  // 使用封面图URL
+        video_url: '',  // 视频URL暂时为空
+        status: 2,  // 状态值：2 表示已通过（根据数据库现有值）
         score: null,
         created_at: new Date().toISOString()
       }
@@ -465,7 +478,7 @@ router.post('/teacher-publish',
         .insert({
           achievement_id: achievement.id,
           reviewer_id: req.user.id,  // 教师自己作为审批人
-          status: 2,  // 2 表示通过（根据数据库现有值）
+          status: 1,  // 1 表示通过（根据数据库现有值）
           feedback: '',  // 使用feedback字段而不是reject_reason
           reviewed_at: new Date().toISOString()
         });
@@ -487,5 +500,71 @@ router.post('/teacher-publish',
     }
   }
 )
+
+// 学生删除成果
+router.delete('/:id', authenticateToken, requireStudent, async (req, res) => {
+  try {
+    const { id } = req.params
+
+    // 检查成果是否存在且属于当前用户
+    const { data: existingAchievement, error: checkError } = await supabase
+      .from('achievements')
+      .select('id, status, publisher_id')
+      .eq('id', id)
+      .single()
+
+    if (checkError || !existingAchievement) {
+      return errorResponse(res, ERROR_MESSAGES.NOT_FOUND, HTTP_STATUS.NOT_FOUND)
+    }
+
+    if (existingAchievement.publisher_id !== req.user.id) {
+      return errorResponse(res, ERROR_MESSAGES.FORBIDDEN, HTTP_STATUS.FORBIDDEN)
+    }
+
+    // 检查成果状态（只能删除草稿、待审批或已打回的成果）
+    if (![1, 3].includes(existingAchievement.status)) { // pending->1, rejected->3
+      return errorResponse(res, '只能删除草稿、待审批或已打回的成果', HTTP_STATUS.FORBIDDEN)
+    }
+
+    // 删除相关的附件记录
+    const { error: attachmentDeleteError } = await supabase
+      .from('achievement_attachments')
+      .delete()
+      .eq('achievement_id', id)
+
+    if (attachmentDeleteError) {
+      console.warn('删除附件失败:', attachmentDeleteError.message)
+    }
+
+    // 删除审批记录
+    const { error: approvalDeleteError } = await supabase
+      .from('approval_records')
+      .delete()
+      .eq('achievement_id', id)
+
+    if (approvalDeleteError) {
+      console.warn('删除审批记录失败:', approvalDeleteError.message)
+    }
+
+    // 删除成果
+    const { error: deleteError } = await supabase
+      .from('achievements')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) {
+      console.error('删除成果失败:', deleteError)
+      return errorResponse(res, '删除成果失败')
+    }
+
+    console.log('✅ 成果删除成功:', id)
+
+    return successResponse(res, { achievement_id: id }, '成果删除成功')
+
+  } catch (error) {
+    console.error('删除成果错误:', error)
+    return errorResponse(res, '删除成果失败')
+  }
+})
 
 export default router

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成果管理功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .success {
+            color: green;
+            background-color: #d4edda;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            color: red;
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .achievement-list {
+            margin-top: 20px;
+        }
+        .achievement-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .status-pending { border-left-color: #ffc107; }
+        .status-approved { border-left-color: #28a745; }
+        .status-rejected { border-left-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>学生成果管理功能测试</h1>
+        
+        <div class="test-section">
+            <h2>1. 获取学生成果列表</h2>
+            <button onclick="getStudentAchievements()">获取成果列表</button>
+            <div id="achievementResult"></div>
+            <div id="achievementList" class="achievement-list"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. 按状态筛选</h2>
+            <button onclick="filterByStatus('all')">全部</button>
+            <button onclick="filterByStatus('pending')">待审核</button>
+            <button onclick="filterByStatus('approved')">已发布</button>
+            <button onclick="filterByStatus('rejected')">已驳回</button>
+            <div id="filterResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>3. 搜索功能</h2>
+            <input type="text" id="searchInput" placeholder="输入搜索关键词" style="padding: 10px; width: 300px;">
+            <button onclick="searchAchievements()">搜索</button>
+            <div id="searchResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>4. 删除成果</h2>
+            <input type="text" id="deleteId" placeholder="输入成果ID" style="padding: 10px; width: 300px;">
+            <button onclick="deleteAchievement()">删除成果</button>
+            <div id="deleteResult"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentAchievements = [];
+        
+        // 获取学生成果列表
+        async function getStudentAchievements() {
+            const resultDiv = document.getElementById('achievementResult');
+            const listDiv = document.getElementById('achievementList');
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/projects?student_id=34ec3e23-e273-4cc3-9def-322ca9389029&status=all', {
+                    headers: {
+                        'Authorization': 'Bearer dev-student-token',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentAchievements = result.data.items || [];
+                    resultDiv.innerHTML = `<div class="success">成功获取 ${currentAchievements.length} 个成果</div>`;
+                    displayAchievements(currentAchievements);
+                } else {
+                    resultDiv.innerHTML = `<div class="error">获取失败: ${result.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">网络错误: ${error.message}</div>`;
+            }
+        }
+        
+        // 显示成果列表
+        function displayAchievements(achievements) {
+            const listDiv = document.getElementById('achievementList');
+            
+            if (achievements.length === 0) {
+                listDiv.innerHTML = '<p>暂无成果</p>';
+                return;
+            }
+            
+            const html = achievements.map(achievement => {
+                const statusClass = `status-${achievement.status}`;
+                const statusText = getStatusText(achievement.status);
+                
+                return `
+                    <div class="achievement-item ${statusClass}">
+                        <h4>${achievement.title}</h4>
+                        <p><strong>ID:</strong> ${achievement.id}</p>
+                        <p><strong>状态:</strong> ${statusText}</p>
+                        <p><strong>创建时间:</strong> ${new Date(achievement.created_at).toLocaleString()}</p>
+                        <p><strong>用户ID:</strong> ${achievement.user_id}</p>
+                    </div>
+                `;
+            }).join('');
+            
+            listDiv.innerHTML = html;
+        }
+        
+        // 获取状态文本
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '待审核',
+                'approved': '已发布',
+                'rejected': '已驳回',
+                'draft': '草稿'
+            };
+            return statusMap[status] || '未知';
+        }
+        
+        // 按状态筛选
+        function filterByStatus(status) {
+            const resultDiv = document.getElementById('filterResult');
+            
+            let filtered = currentAchievements;
+            if (status !== 'all') {
+                filtered = currentAchievements.filter(a => a.status === status);
+            }
+            
+            resultDiv.innerHTML = `<div class="success">筛选结果: ${filtered.length} 个${status === 'all' ? '全部' : getStatusText(status)}成果</div>`;
+            displayAchievements(filtered);
+        }
+        
+        // 搜索成果
+        function searchAchievements() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            const resultDiv = document.getElementById('searchResult');
+            
+            if (!keyword) {
+                resultDiv.innerHTML = '<div class="error">请输入搜索关键词</div>';
+                return;
+            }
+            
+            const filtered = currentAchievements.filter(achievement => 
+                achievement.title.toLowerCase().includes(keyword.toLowerCase())
+            );
+            
+            resultDiv.innerHTML = `<div class="success">搜索 "${keyword}" 找到 ${filtered.length} 个成果</div>`;
+            displayAchievements(filtered);
+        }
+        
+        // 删除成果
+        async function deleteAchievement() {
+            const achievementId = document.getElementById('deleteId').value.trim();
+            const resultDiv = document.getElementById('deleteResult');
+            
+            if (!achievementId) {
+                resultDiv.innerHTML = '<div class="error">请输入成果ID</div>';
+                return;
+            }
+            
+            if (!confirm('确定要删除这个成果吗？此操作不可撤销。')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`http://localhost:3000/api/projects/${achievementId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer dev-student-token',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.innerHTML = '<div class="success">删除成功</div>';
+                    // 重新获取成果列表
+                    getStudentAchievements();
+                } else {
+                    resultDiv.innerHTML = `<div class="error">删除失败: ${result.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">网络错误: ${error.message}</div>`;
+            }
+        }
+        
+        // 页面加载时自动获取成果列表
+        window.onload = function() {
+            getStudentAchievements();
+        };
+    </script>
+</body>
+</html>

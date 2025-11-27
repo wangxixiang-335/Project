@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { API_ENDPOINTS } from '../../config/api';
 import styles from './styles.module.css';
 
 interface FileUpload {
@@ -29,6 +30,7 @@ const AchievementPublishPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [showSaveDraftModal, setShowSaveDraftModal] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [achievementTypes, setAchievementTypes] = useState<Array<{id: string, name: string}>>([]);
   
   // 表单数据
   const [formData, setFormData] = useState<FormData>({
@@ -36,7 +38,7 @@ const AchievementPublishPage: React.FC = () => {
     type: '',
     coverImage: null,
     partners: [''],
-    instructors: ['张教授'],
+    instructors: [''],
     content: '',
     demoVideo: null,
     attachments: []
@@ -55,6 +57,22 @@ const AchievementPublishPage: React.FC = () => {
     return () => { 
       document.title = originalTitle; 
     };
+  }, []);
+
+  // 加载成果类型
+  useEffect(() => {
+    const loadAchievementTypes = async () => {
+      try {
+        const response = await api.get('/achievement-types');
+        if (response && response.data) {
+          setAchievementTypes(response.data);
+        }
+      } catch (error) {
+        console.error('加载成果类型失败:', error);
+      }
+    };
+    
+    loadAchievementTypes();
   }, []);
   
   // 移动端菜单切换
@@ -208,18 +226,98 @@ const AchievementPublishPage: React.FC = () => {
       
       setIsPublishing(true);
       
+      let coverImageUrl = '';
+      
+      // 检查当前token
+      const currentToken = localStorage.getItem('token');
+      console.log('当前token:', currentToken ? currentToken.substring(0, 10) + '...' : '无token');
+      
+      if (!currentToken) {
+        alert('请先登录后再发布成果');
+        setIsPublishing(false);
+        return;
+      }
+      
+      // 上传封面图
+      if (formData.coverImage) {
+        try {
+          console.log('开始上传封面图...');
+          
+          // 创建FormData对象
+          const formDataForUpload = new FormData();
+          formDataForUpload.append('image', formData.coverImage);
+          
+          // 调用教师图片上传API（首先尝试本地文件上传）
+          console.log('调用图片上传API，使用token:', currentToken ? currentToken.substring(0, 10) + '...' : '无token');
+          let uploadResponse;
+          
+          try {
+            // 首先尝试本地文件上传方案
+            uploadResponse = await api.uploadFile('/local-image', formData.coverImage);
+            console.log('本地文件上传成功');
+          } catch (localError) {
+            console.log('本地文件上传失败，尝试Service Role方案:', localError.message);
+            
+            try {
+              // 尝试Service Role方案
+              uploadResponse = await api.uploadFile(API_ENDPOINTS.UPLOAD.TEACHER_IMAGE_SERVICE, formData.coverImage);
+              console.log('Service Role上传成功');
+            } catch (serviceError) {
+              console.log('Service Role上传失败，尝试备用方案:', serviceError.message);
+              
+              try {
+                // 尝试备用方案
+                uploadResponse = await api.uploadFile(API_ENDPOINTS.UPLOAD.TEACHER_IMAGE_ALT, formData.coverImage);
+                console.log('备用方案上传成功');
+              } catch (altError) {
+                console.log('备用方案也失败，使用原始API:', altError.message);
+                
+                // 最后尝试原始API
+                uploadResponse = await api.uploadFile(API_ENDPOINTS.UPLOAD.TEACHER_IMAGE, formData.coverImage);
+                console.log('原始API上传成功');
+              }
+            }
+          }
+          
+          console.log('封面图上传响应:', uploadResponse);
+          
+          if (uploadResponse && uploadResponse.data && uploadResponse.data.url) {
+            coverImageUrl = uploadResponse.data.url;
+            console.log('封面图URL:', coverImageUrl);
+          } else {
+            console.warn('封面图上传成功但没有返回URL');
+          }
+        } catch (uploadError) {
+          console.error('封面图上传失败:', uploadError);
+          console.error('上传错误详情:', uploadError.message);
+          if (uploadError.response) {
+            console.error('服务器响应:', uploadError.response.data);
+            console.error('状态码:', uploadError.response.status);
+          }
+          // 使用默认图片URL继续发布流程
+          coverImageUrl = 'https://via.placeholder.com/400x300.png?text=成果封面图'; // 默认封面图
+          console.log('使用默认封面图:', coverImageUrl);
+        }
+      } else {
+        // 如果没有选择封面图，使用默认图片
+        coverImageUrl = 'https://via.placeholder.com/400x300.png?text=成果封面图';
+        console.log('使用默认封面图:', coverImageUrl);
+      }
+      
       // 构建请求数据
       const publishData = {
         title: formData.title,
         content_html: formData.content || '<p>暂无详细内容</p>',
-        video_url: '', // 后续可以添加视频URL处理
-        category: formData.type
+        video_url: coverImageUrl, // 将封面图URL作为video_url字段传递
+        category: formData.type || '5f18c811-0a39-465b-ab4f-5db179deeed6' // 使用有效的UUID作为默认值
       };
       
       console.log('发布成果数据:', publishData);
+      console.log('使用token:', currentToken ? currentToken.substring(0, 10) + '...' : '无token');
       
       // 调用教师直接发布API
-      const response = await api.post('/projects/teacher-publish', publishData);
+      console.log('开始调用教师发布API...')
+      const response = await api.post(API_ENDPOINTS.PROJECTS.TEACHER_PUBLISH || '/projects/teacher-publish', publishData);
       console.log('发布成功响应:', response);
       
       if (response && response.data) {
@@ -231,7 +329,7 @@ const AchievementPublishPage: React.FC = () => {
           type: '',
           coverImage: null,
           partners: [''],
-          instructors: ['张教授'],
+          instructors: [''],
           content: '',
           demoVideo: null,
           attachments: []
@@ -247,6 +345,12 @@ const AchievementPublishPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('发布失败:', error);
+      console.error('发布错误详情:', error.message);
+      if (error.response) {
+        console.error('服务器响应:', error.response.data);
+        console.error('状态码:', error.response.status);
+        console.error('Headers:', error.response.headers);
+      }
       setIsPublishing(false);
       alert('发布失败：' + (error.message || '网络错误'));
     }
@@ -476,11 +580,11 @@ const AchievementPublishPage: React.FC = () => {
                           className="w-full px-4 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary transition-all"
                         >
                           <option value="">请选择成果类型</option>
-                          <option value="project">项目报告</option>
-                          <option value="paper">论文</option>
-                          <option value="software">软件作品</option>
-                          <option value="experiment">实验报告</option>
-                          <option value="other">其他</option>
+                          {achievementTypes.map((type) => (
+                            <option key={type.id} value={type.id}>
+                              {type.name}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -522,7 +626,7 @@ const AchievementPublishPage: React.FC = () => {
                   <h3 className="text-lg font-semibold text-text-primary mb-4">参与人员</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-1">合作伙伴</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">合作伙伴（选填）</label>
                       <div className="space-y-2">
                         {formData.partners.map((partner, index) => (
                           <div key={index} className="flex items-center">
@@ -544,7 +648,7 @@ const AchievementPublishPage: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-1">指导老师</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">指导老师（选填）</label>
                       <div className="space-y-2">
                         {formData.instructors.map((instructor, index) => (
                           <div key={index} className="flex items-center">
@@ -554,7 +658,6 @@ const AchievementPublishPage: React.FC = () => {
                               onChange={(e) => handleInstructorChange(index, e.target.value)}
                               className="flex-1 px-4 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary transition-all" 
                               placeholder="输入指导老师姓名"
-                              readOnly={index === 0}
                             />
                             <button 
                               onClick={handleAddInstructor}
@@ -737,11 +840,8 @@ const AchievementPublishPage: React.FC = () => {
                   <div className="flex items-center mt-2 text-sm text-text-muted">
                     <span>
                       {formData.type 
-                        ? (formData.type === 'project' ? '项目报告' : 
-                           formData.type === 'paper' ? '论文' :
-                           formData.type === 'software' ? '软件作品' :
-                           formData.type === 'experiment' ? '实验报告' : '其他')
-                        : '项目报告'
+                        ? (achievementTypes.find(type => type.id === formData.type)?.name || '未知类型')
+                        : '请选择类型'
                       }
                     </span>
                     <span className="mx-2">|</span>

@@ -132,7 +132,7 @@ export const del = async (url: string, options?: RequestOptions) => {
 // 上传文件
 export const uploadFile = async (url: string, file: File, onProgress?: (progress: number) => void) => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('image', file);
   
   const token = getAuthToken();
   const headers: HeadersInit = {};
@@ -162,7 +162,13 @@ export const uploadFile = async (url: string, file: File, onProgress?: (progress
           resolve(xhr.responseText);
         }
       } else {
-        reject(new Error(`上传失败: ${xhr.statusText}`));
+        try {
+          const errorData = JSON.parse(xhr.responseText);
+          const errorMessage = errorData?.error || errorData?.message || xhr.statusText;
+          reject(new Error(`上传失败: ${errorMessage}`));
+        } catch (e) {
+          reject(new Error(`上传失败: ${xhr.statusText}`));
+        }
       }
     });
     

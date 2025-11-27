@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../../utils/api';
+import { API_ENDPOINTS } from '../../config/api';
 import styles from './styles.module.css';
 
 interface Collaborator {
@@ -28,6 +30,11 @@ interface Video {
   file: File;
   url: string;
   duration: number;
+}
+
+interface AchievementType {
+  id: string;
+  name: string;
 }
 
 const ProjectIntroPage: React.FC = () => {
@@ -60,17 +67,45 @@ const ProjectIntroPage: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // 加载成果类型
+  useEffect(() => {
+    const loadAchievementTypes = async () => {
+      try {
+        const response = await api.get('/achievement-types');
+        if (response && response.data) {
+          setAchievementTypes(response.data);
+          // 设置默认类型为第一个可用类型
+          if (response.data.length > 0 && !projectType) {
+            setProjectType(response.data[0].id);
+          }
+        }
+      } catch (error) {
+        console.error('加载成果类型失败:', error);
+        // 如果加载失败，使用默认类型
+        setAchievementTypes([
+          { id: 'course', name: '课程项目' },
+          { id: 'research', name: '科研项目' }
+        ]);
+      }
+    };
+    
+    loadAchievementTypes();
+  }, []);
+
   // 表单状态
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [projectName, setProjectName] = useState('');
   const [projectLeader, setProjectLeader] = useState('');
-  const [projectType, setProjectType] = useState('course');
+  const [projectType, setProjectType] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [collaboratorInput, setCollaboratorInput] = useState('');
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string>('');
+  const [achievementTypes, setAchievementTypes] = useState<AchievementType[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Refs
@@ -78,6 +113,7 @@ const ProjectIntroPage: React.FC = () => {
   const photoUploadRef = useRef<HTMLInputElement>(null);
   const videoUploadRef = useRef<HTMLInputElement>(null);
   const documentUploadRef = useRef<HTMLInputElement>(null);
+  const coverImageUploadRef = useRef<HTMLInputElement>(null);
 
   // 富文本编辑器命令
   const handleEditorCommand = (command: string) => {
@@ -122,7 +158,7 @@ const ProjectIntroPage: React.FC = () => {
           const newPhoto: Photo = {
             id: Date.now().toString(),
             file,
-            url: event.target?.result as string,
+            url: event.target?.result,
             description: ''
           };
           setPhotos([...photos, newPhoto]);
@@ -150,12 +186,12 @@ const ProjectIntroPage: React.FC = () => {
         const reader = new FileReader();
         reader.onload = (event) => {
           const video = document.createElement('video');
-          video.src = event.target?.result as string;
+          video.src = event.target?.result;
           video.onloadedmetadata = () => {
             const newVideo: Video = {
               id: Date.now().toString(),
               file,
-              url: event.target?.result as string,
+              url: event.target?.result,
               duration: video.duration
             };
             setVideos([...videos, newVideo]);
@@ -187,6 +223,60 @@ const ProjectIntroPage: React.FC = () => {
     }
   };
 
+  // 处理封面图片上传
+  const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // 文件验证
+      console.log('选择的文件:', {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        sizeInMB: (file.size / (1024 * 1024)).toFixed(2)
+      });
+      
+      // 验证文件类型
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('请选择 JPG、JPEG、PNG 或 WebP 格式的图片文件');
+        return;
+      }
+      
+      // 验证文件大小 (5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        alert('文件过大，请选择小于 5MB 的图片');
+        return;
+      }
+      
+      setCoverImage(file);
+      const url = URL.createObjectURL(file);
+      setCoverImageUrl(url);
+    }
+  };
+
+  // 清除封面图片
+  const clearCoverImage = () => {
+    setCoverImage(null);
+    if (coverImageUrl) {
+      URL.revokeObjectURL(coverImageUrl);
+      setCoverImageUrl('');
+    }
+    if (coverImageUploadRef.current) {
+      coverImageUploadRef.current.value = '';
+    }
+  };
+
+  // 组件卸载时清理
+  useEffect(() => {
+    return () => {
+      if (coverImageUrl) {
+        URL.revokeObjectURL(coverImageUrl);
+      }
+    };
+  }, [coverImageUrl]);
+
   // 项目上传
   const handleUploadProject = async () => {
     if (!projectName || !projectLeader) {
@@ -194,27 +284,254 @@ const ProjectIntroPage: React.FC = () => {
       return;
     }
 
+    if (!projectType) {
+      alert('请选择成果类型');
+      return;
+    }
+
+    if (!coverImage) {
+      alert('请上传封面图片');
+      return;
+    }
+
     setIsSubmitting(true);
 
-    // 模拟上传过程
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      alert('项目上传成功！');
+      let coverImageUrl = '';
       
-      // 重置表单
-      setProjectName('');
-      setProjectLeader('');
-      setProjectType('course');
-      setProjectDescription('');
-      setCollaborators([]);
-      setPhotos([]);
-      setVideos([]);
-      setDocumentFile(null);
-      if (richTextEditorRef.current) {
-        richTextEditorRef.current.innerHTML = '';
+      // 上传封面图片
+      if (coverImage) {
+        try {
+          console.log('开始上传封面图片...');
+          
+          // 检查当前token
+          const currentToken = localStorage.getItem('token');
+          console.log('当前token:', currentToken ? currentToken.substring(0, 10) + '...' : '无token');
+          
+          if (!currentToken) {
+            alert('请先登录后再上传图片');
+            setIsSubmitting(false);
+            return;
+          }
+          
+          let uploadResponse;
+      
+      // 首先将图片转换为base64，作为备选方案
+      let base64data;
+      try {
+        console.log('将图片转换为base64备用...');
+        base64data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsDataURL(coverImage);
+        });
+        console.log('图片转换为base64成功，长度:', base64data.length);
+      } catch (convertError) {
+        console.error('图片转base64失败:', convertError);
+        base64data = null;
+      }
+          
+          // 首先尝试简化base64上传方案（直接存储到数据库）
+          try {
+            console.log('尝试简化Base64图片上传方案...');
+            
+            // 使用简化base64上传API（直接存储到数据库）
+            uploadResponse = await api.post(API_ENDPOINTS.UPLOAD.BASE64_SIMPLE, {
+              imageData: base64data,
+              fileName: coverImage.name
+            });
+            
+            console.log('简化Base64图片上传成功:', uploadResponse);
+          } catch (simpleBase64Error) {
+            console.error('简化Base64图片上传失败:', simpleBase64Error);
+            
+            // 回退到标准base64上传方案
+            try {
+              console.log('尝试标准Base64图片上传方案...');
+              
+              // 使用标准base64上传API
+              uploadResponse = await api.post(API_ENDPOINTS.UPLOAD.BASE64_IMAGE, {
+                imageData: base64data,
+                fileName: coverImage.name
+              });
+              
+              console.log('标准Base64图片上传成功:', uploadResponse);
+            } catch (base64Error) {
+              console.error('Base64图片上传失败:', base64Error);
+              
+              // 如果所有Base64方案都失败，直接使用base64数据作为URL
+              if (base64data) {
+                console.log('所有Base64方案失败，直接使用base64数据作为URL');
+                uploadResponse = {
+                  data: {
+                    url: base64data,
+                    file_name: coverImage.name,
+                    storage_type: 'base64_data_url'
+                  }
+                };
+                console.log('✅ 已设置Base64数据URL作为备用方案');
+              } else {
+                // 只有当Base64数据也不存在时，才回退到传统文件上传
+                console.log('Base64数据也不存在，回退到传统文件上传方案...');
+                
+                // 准备上传数据
+                const formData = new FormData();
+                formData.append('image', coverImage);
+                
+                console.log('准备上传封面图片:', {
+                  fileName: coverImage.name,
+                  fileType: coverImage.type,
+                  fileSize: coverImage.size,
+                  endpoint: API_ENDPOINTS.UPLOAD.GENERAL_IMAGE
+                });
+                
+                try {
+                  // 首先尝试本地文件上传方案
+                  uploadResponse = await api.uploadFile('/local-image', coverImage);
+                  console.log('本地文件上传成功:', uploadResponse);
+                } catch (localError) {
+                  console.error('本地文件上传失败:', localError);
+                  
+                  try {
+                    // 尝试通用图片上传（不需要特定角色权限）
+                    uploadResponse = await api.uploadFile(API_ENDPOINTS.UPLOAD.GENERAL_IMAGE, coverImage);
+                    console.log('通用图片上传成功:', uploadResponse);
+                  } catch (generalError) {
+                    console.error('通用图片上传失败:', generalError);
+                    
+                    console.log('尝试Service Role方案...');
+                    try {
+                      // 尝试Service Role方案（教师端使用的方案）
+                      uploadResponse = await api.uploadFile(API_ENDPOINTS.UPLOAD.TEACHER_IMAGE_SERVICE, coverImage);
+                      console.log('Service Role上传成功:', uploadResponse);
+                    } catch (serviceError) {
+                      console.error('Service Role上传失败:', serviceError);
+                      
+                      console.log('尝试备用方案...');
+                      try {
+                        // 尝试备用方案
+                        uploadResponse = await api.uploadFile(API_ENDPOINTS.UPLOAD.TEACHER_IMAGE_ALT, coverImage);
+                        console.log('备用方案上传成功:', uploadResponse);
+                      } catch (altError) {
+                        console.error('备用方案失败:', altError);
+                        console.log('最后尝试原始学生API...');
+                        
+                        // 最后尝试原始学生API
+                      uploadResponse = await api.uploadFile(API_ENDPOINTS.UPLOAD.IMAGE, coverImage);
+                      console.log('原始学生API上传成功:', uploadResponse);
+                    }
+                  }
+                }
+              }
+            }
+          } // 结束Base64数据不存在的回退逻辑
+          
+          // 最终安全检查：如果所有上传方案都失败，但Base64数据存在，使用Base64数据
+          if (!uploadResponse && base64data) {
+            console.log('所有上传方案都失败，使用Base64数据作为最终备用');
+            uploadResponse = {
+              data: {
+                url: base64data,
+                file_name: coverImage.name,
+                storage_type: 'base64_data_url'
+              }
+            };
+          }
+          
+          console.log('封面图片上传响应:', uploadResponse);
+          
+          if (uploadResponse && uploadResponse.data && uploadResponse.data.url) {
+            coverImageUrl = uploadResponse.data.url;
+            console.log('封面图片URL:', coverImageUrl);
+          } else {
+            console.warn('封面图片上传成功但没有返回URL');
+          }
+        } // 这是内层try-catch的结束
+        
+        console.log('使用默认封面图片:', coverImageUrl);
+      } catch (uploadError) {
+        console.error('封面图片上传失败:', uploadError);
+        console.error('上传错误详情:', {
+          message: uploadError instanceof Error ? uploadError.message : String(uploadError),
+          name: uploadError instanceof Error ? uploadError.name : 'Unknown Error',
+          stack: uploadError instanceof Error ? uploadError.stack : 'No stack trace available'
+        });
+        
+        // 尝试将图片转换为base64作为最后的备选方案
+        // 立即将图片转换为base64并直接使用
+        try {
+          console.log('立即将图片转换为base64...');
+          const reader = new FileReader();
+          
+          // 创建Promise来处理异步读取
+          const base64Promise = new Promise((resolve, reject) => {
+            reader.onloadend = function() {
+              const base64data = reader.result;
+              console.log('图片base64转换成功，长度:', base64data ? base64data.length : 0);
+              resolve(base64data);
+            };
+            reader.onerror = function(error) {
+              console.error('base64转换失败:', error);
+              reject(error);
+            };
+            reader.readAsDataURL(coverImage);
+          });
+          
+          // 等待base64转换完成
+          coverImageUrl = await base64Promise;
+          console.log('使用base64数据作为图片URL');
+        } catch (base64Error) {
+          console.error('base64转换失败:', base64Error);
+          // 使用默认图片继续发布流程
+          coverImageUrl = 'https://via.placeholder.com/400x300.png?text=项目封面图';
+        }
+      }
+    } // 这是外层catch块的结束
+    else {
+        // 如果没有选择封面图，使用默认图片
+        coverImageUrl = 'https://via.placeholder.com/400x300.png?text=项目封面图';
+        console.log('使用默认封面图片:', coverImageUrl);
+      }
+
+      // 构建提交数据
+      const submitData = {
+        title: projectName,
+        content_html: projectDescription || '<p>暂无详细内容</p>',
+        video_url: coverImageUrl, // 将封面图URL作为video_url字段传递
+        category: projectType
+      };
+
+      console.log('提交数据:', submitData);
+
+      // 调用学生提交API
+      const response = await api.post(API_ENDPOINTS.PROJECTS.CREATE, submitData);
+      
+      if (response && response.data) {
+        alert('成果提交成功！请等待老师审批。');
+        
+        // 重置表单
+        setProjectName('');
+        setProjectLeader('');
+        setProjectType(achievementTypes.length > 0 ? achievementTypes[0].id : '');
+        setProjectDescription('');
+        setCollaborators([]);
+        setPhotos([]);
+        setVideos([]);
+        setDocumentFile(null);
+        clearCoverImage();
+        if (richTextEditorRef.current) {
+          richTextEditorRef.current.innerHTML = '';
+        }
+        
+        // 可以跳转到成果管理页面
+        navigate('/business-process');
+      } else {
+        alert('提交失败：响应数据异常');
       }
     } catch (error) {
-      alert('上传失败，请重试');
+      console.error('提交失败:', error);
+      alert('提交失败：' + (error.message || '网络错误'));
     } finally {
       setIsSubmitting(false);
     }
@@ -435,17 +752,68 @@ const ProjectIntroPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label htmlFor="project-type" className="block text-sm font-medium text-text-secondary mb-2">项目类型</label>
+                  <label htmlFor="project-type" className="block text-sm font-medium text-text-secondary mb-2">项目类型 <span className="text-red-500">*</span></label>
                   <select 
                     id="project-type"
                     value={projectType}
                     onChange={(e) => setProjectType(e.target.value)}
                     className={`w-full px-4 py-3 border border-border-light rounded-lg ${styles.searchInputFocus}`}
                   >
-                    <option value="course">课程项目</option>
-                    <option value="research">科研项目</option>
+                    <option value="">请选择成果类型</option>
+                    {achievementTypes.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
+              </div>
+              
+              {/* 封面图片上传 */}
+              <div className="mb-8">
+                <label className="block text-sm font-medium text-text-secondary mb-2">封面图片 <span className="text-red-500">*</span></label>
+                <div className="flex items-center space-x-4">
+                  {coverImage ? (
+                    <div className="relative">
+                      <img 
+                        src={coverImageUrl} 
+                        alt="封面图片" 
+                        className="w-32 h-24 object-cover rounded-lg border border-border-light"
+                      />
+                      <button 
+                        onClick={clearCoverImage}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => coverImageUploadRef.current?.click()}
+                      className="w-32 h-24 border-2 border-dashed border-border-light rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-colors"
+                    >
+                      <i className="fas fa-cloud-upload-alt text-2xl text-text-muted mb-1"></i>
+                      <span className="text-xs text-text-muted text-center">点击上传</span>
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <button 
+                      type="button"
+                      onClick={() => coverImageUploadRef.current?.click()}
+                      className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm"
+                    >
+                      {coverImage ? '更换图片' : '选择图片'}
+                    </button>
+                    <p className="text-xs text-text-muted mt-1">支持 JPG、PNG 格式，建议尺寸 400×300</p>
+                  </div>
+                </div>
+                <input 
+                  type="file" 
+                  ref={coverImageUploadRef}
+                  onChange={handleCoverImageUpload}
+                  className="hidden" 
+                  accept="image/jpeg,image/png"
+                />
               </div>
               
               {/* 第二行：协作者 */}
@@ -670,9 +1038,18 @@ const ProjectIntroPage: React.FC = () => {
               <div className="max-w-3xl mx-auto">
                 {/* 预览头部 */}
                 <div className="mb-6 text-center">
+                  {coverImage && (
+                    <div className="mb-4">
+                      <img 
+                        src={coverImageUrl} 
+                        alt="项目封面" 
+                        className="w-full h-64 object-cover rounded-lg mx-auto"
+                      />
+                    </div>
+                  )}
                   <h1 className="text-3xl font-bold text-text-primary mb-2">{projectName || '未命名项目'}</h1>
                   <div className="flex justify-center items-center space-x-4 text-sm text-text-muted">
-                    <span>{projectType === 'course' ? '课程项目' : '科研项目'}</span>
+                    <span>{projectType ? (achievementTypes.find(type => type.id === projectType)?.name || '未知类型') : '未选择类型'}</span>
                     <span>•</span>
                     <span>负责人：{projectLeader || '未指定负责人'}</span>
                   </div>

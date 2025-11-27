@@ -248,16 +248,26 @@ const TeacherPublish = ({ user }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${API_BASE}/teacher/projects`, {
-        ...projectForm,
-        approvers: publishModal.selectedApprovers,
-        status: 'pending'
-      }, {
+      
+      // 使用正确的教师发布API端点
+      const publishData = {
+        title: projectForm.title,
+        content_html: projectForm.content,
+        video_url: projectForm.coverImage, // 封面图URL通过video_url字段传递
+        category: projectForm.projectType,
+        partners: projectForm.partners,
+        instructor: projectForm.instructor,
+        attachments: projectForm.attachments
+      };
+      
+      console.log('发布数据:', publishData);
+      
+      const response = await axios.post(`${API_BASE}/projects/teacher-publish`, publishData, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.data.success) {
-        setMessage('项目发布成功，等待审批');
+        setMessage('成果发布成功！');
         setPublishModal({ isOpen: false, selectedApprovers: [] });
         // 重置表单
         setProjectForm({
@@ -272,8 +282,8 @@ const TeacherPublish = ({ user }) => {
         });
       }
     } catch (error) {
-      console.error('发布项目失败:', error);
-      setMessage('发布项目失败');
+      console.error('发布成果失败:', error);
+      setMessage('发布成果失败: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
