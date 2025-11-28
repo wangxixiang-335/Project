@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 
 const API_BASE = '/api';
@@ -12,6 +12,7 @@ const ProjectSubmit = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const fileInputRef = useRef(null);
+  const richEditorRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -56,15 +57,88 @@ const ProjectSubmit = () => {
     }
   };
 
+  useEffect(() => {
+    // 动态加载富文本编辑器脚本
+    const loadRichEditor = async () => {
+      try {
+        // 如果RichTextEditor未定义，尝试加载脚本
+        if (typeof window.RichTextEditor === 'undefined') {
+          const script = document.createElement('script');
+          script.src = '/rich-editor.js';
+          script.async = true;
+          
+          await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+        }
+        
+        // 初始化富文本编辑器
+        if (typeof window.RichTextEditor !== 'undefined' && richEditorRef.current) {
+          const editor = new window.RichTextEditor('richEditorContainer', {
+            placeholder: '请输入项目介绍，支持文字和图片混合编辑，类似学习通的作业提交体验...',
+            maxImages: 10,
+            uploadEndpoint: `${API_BASE}/upload/image`,
+            onImageUpload: (data) => {
+              console.log('图片上传成功:', data);
+              setMessage({ type: 'success', text: `图片上传成功: ${data.url}` });
+            },
+            onContentChange: (content) => {
+              setFormData(prev => ({
+                ...prev,
+                content_html: content
+              }));
+            }
+          });
+          
+          // 保存编辑器实例引用
+          richEditorRef.current = editor;
+          
+          // 设置初始内容
+          if (formData.content_html) {
+            editor.setContent(formData.content_html);
+          }
+        }
+      } catch (error) {
+        console.error('加载富文本编辑器失败:', error);
+        setMessage({ type: 'error', text: '富文本编辑器加载失败，将使用普通文本框' });
+      }
+    };
+
+    loadRichEditor();
+    
+    // 清理函数
+    return () => {
+      if (richEditorRef.current && richEditorRef.current.destroy) {
+        richEditorRef.current.destroy();
+      }
+    };
+  }, []);
+
   const handleChange = (e) => {
+    const { name, value } = e.target;
+    
+    // 如果修改的是content_html且富文本编辑器存在，同步更新编辑器内容
+    if (name === 'content_html' && richEditorRef.current) {
+      richEditorRef.current.setContent(value);
+    }
+    
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
   };
 
-  // 处理图片上传
+  // 处理图片上传（现在通过富文本编辑器处理）
   const handleImageUpload = async (event) => {
+    // 如果富文本编辑器已加载，使用编辑器上传功能
+    if (richEditorRef.current) {
+      setMessage({ type: 'info', text: '请使用富文本编辑器工具栏的图片按钮上传图片' });
+      return;
+    }
+    
+    // 后备方案：传统上传方式
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
@@ -82,24 +156,21 @@ const ProjectSubmit = () => {
         formData.append('image', file);
 
         const response = await axios.post(`${API_BASE}/upload/image`, formData, {
-          method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
         });
 
-        const result = await response.json();
-        
-        if (response.ok && result.data && result.data.url) {
+        if (response.data.success && response.data.data && response.data.data.url) {
           // 在光标位置插入图片
-          const imgTag = `<img src="${result.data.url}" alt="项目图片" style="max-width: 100%; height: auto; margin: 10px 0;"/>`;
+          const imgTag = `<img src="${response.data.data.url}" alt="项目图片" style="max-width: 100%; height: auto; margin: 10px 0;"/>`;
           setFormData(prev => ({
             ...prev,
             content_html: prev.content_html + imgTag
           }));
         } else {
-          setMessage({ type: 'error', text: `图片上传失败: ${result.message}` });
+          setMessage({ type: 'error', text: `图片上传失败: ${response.data.message}` });
         }
       }
     } catch (error) {
@@ -188,13 +259,20 @@ const ProjectSubmit = () => {
             <button type="button" onClick={() => insertTemplate('<p>项目描述...</p>')} className="template-btn">插入段落</button>
             <button type="button" onClick={() => insertTemplate('<ul><li>功能特点1</li><li>功能特点2</li></ul>')} className="template-btn">插入列表</button>
           </div>
+          
+          {/* 富文本编辑器容器 */}
+          <div id="richEditorContainer"></div>
+          
+          {/* 后备文本框（当富文本编辑器加载失败时使用） */}
           <textarea 
             name="content_html" 
             value={formData.content_html}
             onChange={handleChange}
             rows="10"
             placeholder="请输入项目介绍文字,支持HTML格式.可以只输入文字,也可以添加图片,或者只提供视频链接."
+            style={{ display: richEditorRef.current ? 'none' : 'block', width: '100%' }}
           />
+          
           <div style={{marginTop: '10px'}}>
             <input
               type="file"
@@ -209,11 +287,12 @@ const ProjectSubmit = () => {
               onClick={() => fileInputRef.current?.click()}
               className="upload-btn"
               disabled={loading}
+              style={{ display: richEditorRef.current ? 'none' : 'inline-block' }}
             >
-              📷 上传图片
+              📷 上传图片（后备方案）
             </button>
             <small style={{color: '#666', marginLeft: '10px'}}>
-              支持文字,图片或视频任意组合,至少提供其中一项即可
+              💡 使用富文本编辑器工具栏的 🖼️ 按钮上传图片，体验类似学习通的图文混合编辑
             </small>
           </div>
         </div>

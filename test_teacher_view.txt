@@ -1,0 +1,33 @@
+教师成果查看功能修复测试
+
+修复内容：
+1. 教师成果查看页面（p-achievement_view/index.tsx）
+   - 修复了 handleViewDetail 函数，现在会正确跳转到项目详情页面
+   - 原功能：只显示alert提示框
+   - 新功能：navigate(`/project-detail?projectId=${achievementId}`)
+
+2. 项目详情页面（p-project_detail/index.tsx）
+   - 添加了从后端API获取真实数据的功能
+   - 添加了加载状态显示
+   - 如果后端API不可用，会自动回退到模拟数据
+   - 支持通过projectId参数获取对应的项目详情
+
+3. 教师成果管理页面（p-achievement_management/index.tsx）
+   - 为已发布的成果添加了"查看"按钮
+   - 添加了 handleViewAchievement 函数用于跳转到详情页面
+
+测试步骤：
+1. 使用教师账号登录系统
+2. 进入"成果查看"页面
+3. 点击任意成果的"查看"按钮
+4. 系统应该跳转到项目详情页面，显示对应的项目信息
+
+预期结果：
+- 点击查看按钮后，页面会跳转到 /project-detail?projectId={项目ID}
+- 项目详情页面会显示加载状态，然后显示项目的详细信息
+- 如果后端API可用，会显示真实数据；否则显示模拟数据
+
+注意事项：
+- 确保后端API端点 /projects/:id 可用
+- 项目ID需要与后端数据库中的记录匹配
+- 加载状态会显示"正在加载项目详情..."提示

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片插入位置测试 - 富文本编辑器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        .debug-panel {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .instructions {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .instructions h4 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+        .instructions ol {
+            margin-bottom: 0;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 富文本编辑器图片插入位置测试</h1>
+        <p>测试图片是否正确插入到光标位置</p>
+
+        <div class="instructions">
+            <h4>📋 测试步骤：</h4>
+            <ol>
+                <li>在下面的编辑器中输入一些文字</li>
+                <li>将光标放在文字中间（不要选中任何文字）</li>
+                <li>点击"插入测试图片"按钮</li>
+                <li>观察图片是否插入到光标位置</li>
+                <li>重复测试，将光标放在不同位置</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 富文本编辑器</h3>
+            <div id="editorStatus">
+                <div class="status info">正在加载富文本编辑器...</div>
+            </div>
+            <div id="richEditorContainer" style="margin-top: 20px;"></div>
+            
+            <div style="margin-top: 15px;">
+                <button class="btn btn-primary" onclick="insertTestImage()">🖼️ 插入测试图片</button>
+                <button class="btn btn-success" onclick="insertSampleText()">📝 插入示例文字</button>
+                <button class="btn btn-info" onclick="getContent()">📋 获取内容</button>
+                <button class="btn btn-primary" onclick="clearEditor()">🧹 清空编辑器</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 内容分析</h3>
+            <div id="contentAnalysis">
+                <div class="status info">等待内容分析...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 调试信息</h3>
+            <div id="debugInfo" class="debug-panel">
+// 调试信息将显示在这里
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let richEditor = null;
+        const API_BASE = '/api';
+
+        // 日志函数
+        function log(message, type = 'info') {
+            const debugInfo = document.getElementById('debugInfo');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            debugInfo.textContent += logEntry;
+            debugInfo.scrollTop = debugInfo.scrollHeight;
+            
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // 显示状态
+        function showStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            }
+        }
+
+        // 加载富文本编辑器
+        async function loadRichEditor() {
+            try {
+                log('开始加载富文本编辑器...');
+                showStatus('editorStatus', '正在加载富文本编辑器...', 'info');
+                
+                // 动态加载脚本
+                if (typeof window.RichTextEditor === 'undefined') {
+                    log('RichTextEditor未定义，动态加载脚本...');
+                    
+                    const script = document.createElement('script');
+                    script.src = '/rich-editor.js';
+                    script.async = true;
+                    
+                    await new Promise((resolve, reject) => {
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                    });
+                    
+                    log('✅ 富文本编辑器脚本加载成功');
+                }
+                
+                // 初始化编辑器
+                if (typeof window.RichTextEditor !== 'undefined') {
+                    richEditor = new window.RichTextEditor('richEditorContainer', {
+                        placeholder: '请在这里输入文字，然后将光标放在文字中间，点击上方的"插入测试图片"按钮测试图片插入位置...',
+                        maxImages: 10,
+                        uploadEndpoint: `${API_BASE}/upload/image`,
+                        onImageUpload: (data) => {
+                            log(`✅ 图片上传成功: ${data.url}`);
+                            showStatus('editorStatus', '✅ 图片上传成功！', 'success');
+                            analyzeContent();
+                        },
+                        onContentChange: (content) => {
+                            log('内容已更新');
+                            analyzeContent();
+                        }
+                    });
+                    
+                    // 添加一些初始文字用于测试
+                    setTimeout(() => {
+                        insertSampleText();
+                    }, 500);
+                    
+                    log('✅ 富文本编辑器初始化成功');
+                    showStatus('editorStatus', '✅ 富文本编辑器已就绪，请在文字中间点击插入图片测试', 'success');
+                } else {
+                    throw new Error('富文本编辑器加载失败');
+                }
+                
+            } catch (error) {
+                log(`❌ 富文本编辑器加载失败: ${error.message}`, 'error');
+                showStatus('editorStatus', `❌ 富文本编辑器加载失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 插入测试图片
+        function insertTestImage() {
+            if (!richEditor) {
+                log('❌ 富文本编辑器未初始化', 'error');
+                return;
+            }
+            
+            // 使用在线占位图片作为测试
+            const testImageUrl = 'https://via.placeholder.com/400x300/FF6B6B/FFFFFF?text=测试图片';
+            
+            log('正在插入测试图片...');
+            log(`图片URL: ${testImageUrl}`);
+            
+            // 记录当前光标位置信息
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const container = range.commonAncestorContainer;
+                const containerText = container.textContent || '';
+                const cursorPosition = range.startOffset;
+                
+                log(`光标位置信息:`);
+                log(`- 容器类型: ${container.nodeType === Node.TEXT_NODE ? '文本节点' : '元素节点'}`);
+                log(`- 容器内容: "${containerText.substring(0, 50)}${containerText.length > 50 ? '...' : ''}"`);
+                log(`- 光标位置: ${cursorPosition} / ${containerText.length}`);
+                log(`- 是否在编辑器内: ${richEditor.editor.contains(container)}`);
+            }
+            
+            // 插入图片
+            richEditor.insertImageToEditor(testImageUrl, '测试图片');
+            
+            log('✅ 测试图片插入完成');
+            showStatus('editorStatus', '✅ 测试图片已插入，请检查位置是否正确', 'success');
+        }
+
+        // 插入示例文字
+        function insertSampleText() {
+            if (!richEditor) {
+                log('❌ 富文本编辑器未初始化', 'error');
+                return;
+            }
+            
+            const sampleText = `
+                <h3>🎯 测试标题</h3>
+                <p>这是第一行文字，请将光标放在这里 → 光标位置 ← 然后点击插入图片按钮。</p>
+                <p>这是第二行文字，也可以在这里 → 另一个位置 ← 测试图片插入。</p>
+                <p>这是第三行文字，<strong>加粗文字</strong>和<em>斜体文字</em>之间也可以测试。</p>
+                <p>最后一行文字，在END之前插入图片应该在这里 → END</p>
+            `;
+            
+            richEditor.setContent(sampleText);
+            log('✅ 示例文字已插入');
+            
+            // 将光标放在指定位置
+            setTimeout(() => {
+                const editor = richEditor.editor;
+                const targetText = '光标位置';
+                const walker = document.createTreeWalker(
+                    editor,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                );
+                
+                let textNode = null;
+                let node;
+                
+                while (node = walker.nextNode()) {
+                    const index = node.textContent.indexOf(targetText);
+                    if (index !== -1) {
+                        textNode = node;
+                        break;
+                    }
+                }
+                
+                if (textNode) {
+                    const range = document.createRange();
+                    const index = textNode.textContent.indexOf(targetText);
+                    range.setStart(textNode, index + targetText.length);
+                    range.collapse(true);
+                    
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    
+                    log(`✅ 光标已定位到"${targetText}"后面`);
+                    editor.focus();
+                }
+            }, 100);
+        }
+
+        // 分析内容
+        function analyzeContent() {
+            if (!richEditor) return;
+            
+            const content = richEditor.getContent();
+            const textContent = richEditor.getTextContent();
+            const images = richEditor.getImages();
+            
+            // 分析图片位置
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            const imgElements = tempDiv.querySelectorAll('img');
+            let positionAnalysis = '';
+            
+            imgElements.forEach((img, index) => {
+                const prevText = img.previousSibling ? img.previousSibling.textContent || '' : '';
+                const nextText = img.nextSibling ? img.nextSibling.textContent || '' : '';
+                
+                positionAnalysis += `图片${index + 1}: "${prevText.substring(-20)}" → [图片] → "${nextText.substring(0, 20)}"\n`;
+            });
+            
+            const analysisHtml = `
+                <div style="background: white; padding: 15px; border-radius: 4px; border: 1px solid #ddd;">
+                    <h4>📊 内容分析结果</h4>
+                    <p><strong>HTML长度:</strong> ${content.length} 字符</p>
+                    <p><strong>纯文本长度:</strong> ${textContent.length} 字符</p>
+                    <p><strong>图片数量:</strong> ${images.length} 张</p>
+                    ${images.length > 0 ? `
+                        <p><strong>图片详情:</strong></p>
+                        <ul>
+                            ${images.map((img, index) => `<li>图片${index + 1}: <a href="${img.url}" target="_blank">${img.url}</a></li>`).join('')}
+                        </ul>
+                        <p><strong>图片位置分析:</strong></p>
+                        <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">${positionAnalysis}</pre>
+                    ` : '<p><em>暂无图片</em></p>'}
+                </div>
+            `;
+            
+            document.getElementById('contentAnalysis').innerHTML = analysisHtml;
+            log('内容分析完成');
+        }
+
+        // 获取内容
+        function getContent() {
+            if (!richEditor) {
+                log('❌ 富文本编辑器未初始化', 'error');
+                return;
+            }
+            
+            const content = richEditor.getContent();
+            const textContent = richEditor.getTextContent();
+            const images = richEditor.getImages();
+            
+            log('获取内容成功');
+            log(`HTML长度: ${content.length} 字符`);
+            log(`纯文本长度: ${textContent.length} 字符`);
+            log(`图片数量: ${images.length} 张`);
+            
+            analyzeContent();
+        }
+
+        // 清空编辑器
+        function clearEditor() {
+            if (!richEditor) {
+                log('❌ 富文本编辑器未初始化', 'error');
+                return;
+            }
+            
+            richEditor.clear();
+            log('✅ 编辑器已清空');
+            showStatus('editorStatus', '✅ 编辑器已清空', 'success');
+            document.getElementById('contentAnalysis').innerHTML = '<div class="status info">内容已清空</div>';
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            log('页面加载完成，开始初始化...');
+            
+            // 延迟加载富文本编辑器
+            setTimeout(() => {
+                loadRichEditor();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './TeacherPublish.css';
 
@@ -9,7 +9,6 @@ const TeacherPublish = ({ user }) => {
   const [projectForm, setProjectForm] = useState({
     title: '',
     projectType: '',
-    coverImage: '',
     partners: '',
     instructor: user.username,
     content: '',
@@ -32,6 +31,7 @@ const TeacherPublish = ({ user }) => {
   });
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const richEditorRef = useRef(null);
 
   // 获取指导老师列表
   const loadInstructors = async () => {
@@ -48,6 +48,66 @@ const TeacherPublish = ({ user }) => {
       console.error('获取指导老师列表失败:', error);
     }
   };
+
+  // 初始化富文本编辑器
+  useEffect(() => {
+    const loadRichEditor = async () => {
+      try {
+        // 如果RichTextEditor未定义，尝试加载脚本
+        if (typeof window.RichTextEditor === 'undefined') {
+          const script = document.createElement('script');
+          script.src = '/rich-editor.js';
+          script.async = true;
+          
+          await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+        }
+        
+        // 初始化富文本编辑器
+        if (typeof window.RichTextEditor !== 'undefined' && richEditorRef.current !== false) {
+          const editor = new window.RichTextEditor('teacherRichEditorContainer', {
+            placeholder: '请输入成果介绍，支持文字和图片混合编辑，类似学习通的作业提交体验...',
+            maxImages: 10,
+            uploadEndpoint: `${API_BASE}/upload/image`,
+            onImageUpload: (data) => {
+              console.log('图片上传成功:', data);
+              setMessage('图片上传成功！');
+            },
+            onContentChange: (content) => {
+              setProjectForm(prev => ({
+                ...prev,
+                content: content
+              }));
+            }
+          });
+          
+          // 保存编辑器实例引用
+          richEditorRef.current = editor;
+          
+          // 设置初始内容
+          if (projectForm.content) {
+            editor.setContent(projectForm.content);
+          }
+        }
+      } catch (error) {
+        console.error('加载富文本编辑器失败:', error);
+        setMessage('富文本编辑器加载失败，将使用普通文本框');
+        richEditorRef.current = false; // 标记加载失败
+      }
+    };
+
+    loadRichEditor();
+    
+    // 清理函数
+    return () => {
+      if (richEditorRef.current && richEditorRef.current.destroy) {
+        richEditorRef.current.destroy();
+      }
+    };
+  }, []);
 
   // 文件上传处理
   const handleFileUpload = async (file) => {
@@ -99,7 +159,8 @@ const TeacherPublish = ({ user }) => {
 
   // AI一键布局
   const aiLayout = async () => {
-    if (!projectForm.content) {
+    const currentContent = richEditorRef.current ? richEditorRef.current.getContent() : projectForm.content;
+    if (!currentContent) {
       setMessage('请先输入内容');
       return;
     }
@@ -107,7 +168,7 @@ const TeacherPublish = ({ user }) => {
     setAiModal({
       isOpen: true,
       type: 'layout',
-      content: projectForm.content,
+      content: currentContent,
       result: ''
     });
 
@@ -115,7 +176,7 @@ const TeacherPublish = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(`${API_BASE}/ai/layout`, {
-        content: projectForm.content
+        content: currentContent
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -133,7 +194,8 @@ const TeacherPublish = ({ user }) => {
 
   // AI一键润色
   const aiPolish = async () => {
-    if (!projectForm.content) {
+    const currentContent = richEditorRef.current ? richEditorRef.current.getContent() : projectForm.content;
+    if (!currentContent) {
       setMessage('请先输入内容');
       return;
     }
@@ -141,7 +203,7 @@ const TeacherPublish = ({ user }) => {
     setAiModal({
       isOpen: true,
       type: 'polish',
-      content: projectForm.content,
+      content: currentContent,
       result: ''
     });
 
@@ -149,7 +211,7 @@ const TeacherPublish = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(`${API_BASE}/ai/polish`, {
-        content: projectForm.content
+        content: currentContent
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -253,7 +315,7 @@ const TeacherPublish = ({ user }) => {
       const publishData = {
         title: projectForm.title,
         content_html: projectForm.content,
-        video_url: projectForm.coverImage, // 封面图URL通过video_url字段传递
+        video_url: '', // 封面图功能已移除
         category: projectForm.projectType,
         partners: projectForm.partners,
         instructor: projectForm.instructor,
@@ -323,7 +385,7 @@ const TeacherPublish = ({ user }) => {
 
       {activeTab === 'edit' ? (
         <div className="edit-section">
-          {/* 第一行：标题、成果类型、封面图 */}
+          {/* 第一行：标题、成果类型 */}
           <div className="form-row">
             <div className="form-group">
               <label>成果标题 *</label>
@@ -348,16 +410,6 @@ const TeacherPublish = ({ user }) => {
                 <option value="实验">实验</option>
                 <option value="其他">其他</option>
               </select>
-            </div>
-            <div className="form-group">
-              <label>封面图</label>
-              <input 
-                type="text"
-                value={projectForm.coverImage}
-                onChange={(e) => setProjectForm(prev => ({ ...prev, coverImage: e.target.value }))}
-                placeholder="输入封面图URL"
-                className="cover-input"
-              />
             </div>
           </div>
 
@@ -399,13 +451,23 @@ const TeacherPublish = ({ user }) => {
                 ✨ AI一键润色
               </button>
             </div>
+            
+            {/* 富文本编辑器容器 */}
+            <div id="teacherRichEditorContainer"></div>
+            
+            {/* 后备文本框（当富文本编辑器加载失败时使用） */}
             <textarea 
               rows="10"
               value={projectForm.content}
               onChange={(e) => setProjectForm(prev => ({ ...prev, content: e.target.value }))}
               placeholder="请输入成果内容，支持HTML格式"
               className="content-textarea"
+              style={{ display: richEditorRef.current ? 'none' : 'block' }}
             />
+            
+            <small className="form-help">
+              💡 使用富文本编辑器工具栏的 🖼️ 按钮上传图片，体验类似学习通的图文混合编辑
+            </small>
           </div>
 
           {/* 第四行：成果演示视频 */}
@@ -470,9 +532,6 @@ const TeacherPublish = ({ user }) => {
         <div className="preview-section">
           <div className="preview-content">
             <h2>{projectForm.title || '未命名成果'}</h2>
-            {projectForm.coverImage && (
-              <img src={projectForm.coverImage} alt="封面" className="preview-cover" />
-            )}
             <div className="preview-meta">
               <p><strong>类型：</strong> {projectForm.projectType || '未指定'}</p>
               <p><strong>合作伙伴：</strong> {projectForm.partners || '无'}</p>

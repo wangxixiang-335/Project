@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { API_ENDPOINTS } from '../../config/api';
+import RichTextEditor from '../../components/RichTextEditor';
 import styles from './styles.module.css';
 
 interface Collaborator {
@@ -115,19 +116,9 @@ const ProjectIntroPage: React.FC = () => {
   const documentUploadRef = useRef<HTMLInputElement>(null);
   const coverImageUploadRef = useRef<HTMLInputElement>(null);
 
-  // 富文本编辑器命令
-  const handleEditorCommand = (command: string) => {
-    if (richTextEditorRef.current) {
-      document.execCommand(command, false, null);
-      richTextEditorRef.current.focus();
-    }
-  };
-
   // 处理富文本编辑器内容变化
-  const handleRichTextChange = () => {
-    if (richTextEditorRef.current) {
-      setProjectDescription(richTextEditorRef.current.innerHTML);
-    }
+  const handleRichTextChange = (content: string) => {
+    setProjectDescription(content);
   };
 
   // 添加协作者
@@ -289,8 +280,8 @@ const ProjectIntroPage: React.FC = () => {
       return;
     }
 
-    if (!coverImage) {
-      alert('请上传封面图片');
+    if (!projectDescription) {
+      alert('请输入项目描述');
       return;
     }
 
@@ -520,9 +511,8 @@ const ProjectIntroPage: React.FC = () => {
         setVideos([]);
         setDocumentFile(null);
         clearCoverImage();
-        if (richTextEditorRef.current) {
-          richTextEditorRef.current.innerHTML = '';
-        }
+        // 清空富文本编辑器内容
+        handleRichTextChange('');
         
         // 可以跳转到成果管理页面
         navigate('/business-process');
@@ -771,7 +761,7 @@ const ProjectIntroPage: React.FC = () => {
               
               {/* 封面图片上传 */}
               <div className="mb-8">
-                <label className="block text-sm font-medium text-text-secondary mb-2">封面图片 <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-text-secondary mb-2">封面图片（可选）</label>
                 <div className="flex items-center space-x-4">
                   {coverImage ? (
                     <div className="relative">
@@ -843,7 +833,7 @@ const ProjectIntroPage: React.FC = () => {
               {/* 第三行：富文本编辑窗口 */}
               <div className="mb-8">
                 <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-medium text-text-secondary">项目描述</label>
+                  <label className="block text-sm font-medium text-text-secondary">项目描述 <span className="text-red-500">*</span></label>
                   <div className="flex space-x-2">
                     <button className="px-3 py-1 text-xs bg-orange-100 text-orange-600 rounded hover:bg-orange-200 transition-colors">
                       <i className="fas fa-magic mr-1"></i>一键布局
@@ -853,102 +843,12 @@ const ProjectIntroPage: React.FC = () => {
                     </button>
                   </div>
                 </div>
-                <div className="border border-border-light rounded-lg overflow-hidden">
-                  {/* 富文本编辑器工具栏 */}
-                  <div className="flex flex-wrap items-center p-2 bg-gray-50 border-b border-border-light">
-                    <button 
-                      onClick={() => handleEditorCommand('bold')}
-                      className="p-2 text-text-secondary hover:bg-gray-200 rounded"
-                    >
-                      <i className="fas fa-bold"></i>
-                    </button>
-                    <button 
-                      onClick={() => handleEditorCommand('italic')}
-                      className="p-2 text-text-secondary hover:bg-gray-200 rounded"
-                    >
-                      <i className="fas fa-italic"></i>
-                    </button>
-                    <button 
-                      onClick={() => handleEditorCommand('underline')}
-                      className="p-2 text-text-secondary hover:bg-gray-200 rounded"
-                    >
-                      <i className="fas fa-underline"></i>
-                    </button>
-                    <div className="w-px h-6 bg-border-light mx-1"></div>
-                    <button 
-                      onClick={() => handleEditorCommand('insertUnorderedList')}
-                      className="p-2 text-text-secondary hover:bg-gray-200 rounded"
-                    >
-                      <i className="fas fa-list-ul"></i>
-                    </button>
-                    <button 
-                      onClick={() => handleEditorCommand('insertOrderedList')}
-                      className="p-2 text-text-secondary hover:bg-gray-200 rounded"
-                    >
-                      <i className="fas fa-list-ol"></i>
-                    </button>
-                    <div className="w-px h-6 bg-border-light mx-1"></div>
-                    <button 
-                      onClick={() => handleEditorCommand('justifyLeft')}
-                      className="p-2 text-text-secondary hover:bg-gray-200 rounded"
-                    >
-                      <i className="fas fa-align-left"></i>
-                    </button>
-                    <button 
-                      onClick={() => handleEditorCommand('justifyCenter')}
-                      className="p-2 text-text-secondary hover:bg-gray-200 rounded"
-                    >
-                      <i className="fas fa-align-center"></i>
-                    </button>
-                    <button 
-                      onClick={() => handleEditorCommand('justifyRight')}
-                      className="p-2 text-text-secondary hover:bg-gray-200 rounded"
-                    >
-                      <i className="fas fa-align-right"></i>
-                    </button>
-                    <div className="w-px h-6 bg-border-light mx-1"></div>
-                    <button 
-                      onClick={() => photoUploadRef.current?.click()}
-                      className="p-2 text-text-secondary hover:bg-gray-200 rounded"
-                    >
-                      <i className="fas fa-image"></i>
-                    </button>
-                  </div>
-                  {/* 富文本编辑区域 */}
-                  <div 
-                    ref={richTextEditorRef}
-                    className="p-4 min-h-[300px] focus:outline-none"
-                    contentEditable="true"
-                    onInput={handleRichTextChange}
-                    suppressContentEditableWarning={true}
-                  ></div>
-                </div>
-              </div>
-              
-              {/* 第四行：项目照片 */}
-              <div className="mb-8">
-                <label className="block text-sm font-medium text-text-secondary mb-2">项目照片</label>
-                <div 
-                  onClick={() => photoUploadRef.current?.click()}
-                  className="border-2 border-dashed border-border-light rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  <i className="fas fa-image text-4xl text-text-muted mb-3"></i>
-                  <p className="text-sm text-text-muted">点击或拖拽文件到此处上传</p>
-                  <p className="text-xs text-text-muted mt-1">支持 JPG、PNG 格式，建议尺寸 1200x675px，最大 10MB</p>
-                  <input 
-                    ref={photoUploadRef}
-                    type="file" 
-                    className="hidden" 
-                    accept="image/jpeg, image/png"
-                    multiple
-                    onChange={handlePhotoUpload}
-                  />
-                </div>
-                {photos.length > 0 && (
-                  <div className="mt-4">
-                    {renderPhotoPreviews()}
-                  </div>
-                )}
+                <RichTextEditor
+                  value={projectDescription}
+                  onChange={handleRichTextChange}
+                  placeholder="请输入项目详细描述，可以在文字中插入图片..."
+                  height="400px"
+                />
               </div>
               
               {/* 第五行：项目视频 */}

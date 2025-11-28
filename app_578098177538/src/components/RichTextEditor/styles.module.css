@@ -1,0 +1,285 @@
+.richTextEditor {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  gap: 4px;
+}
+
+.toolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbarDivider {
+  width: 1px;
+  height: 20px;
+  background: #e5e7eb;
+  margin: 0 6px;
+}
+
+.toolbarButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.toolbarButton:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.toolbarButton:active:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.toolbarButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.imageButton {
+  color: #059669;
+}
+
+.imageButton:hover:not(:disabled) {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.uploadingIndicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #059669;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.editorContent {
+  padding: 16px;
+  min-height: 300px;
+  outline: none;
+  line-height: 1.6;
+  color: #374151;
+  font-size: 14px;
+}
+
+.editorContent:empty:before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.editorContent:focus {
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.1);
+}
+
+/* 编辑器内容样式 */
+.editorContent h1,
+.editorContent h2,
+.editorContent h3,
+.editorContent h4,
+.editorContent h5,
+.editorContent h6 {
+  margin: 16px 0 8px 0;
+  font-weight: 600;
+  color: #111827;
+}
+
+.editorContent h1 { font-size: 24px; }
+.editorContent h2 { font-size: 20px; }
+.editorContent h3 { font-size: 18px; }
+.editorContent h4 { font-size: 16px; }
+.editorContent h5 { font-size: 14px; }
+.editorContent h6 { font-size: 12px; }
+
+.editorContent p {
+  margin: 8px 0;
+}
+
+.editorContent ul,
+.editorContent ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.editorContent li {
+  margin: 4px 0;
+}
+
+.editorContent img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 8px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.editorContent img:hover {
+  transform: scale(1.02);
+}
+
+.editorContent img:active {
+  transform: scale(0.98);
+}
+
+.editorContent a {
+  color: #059669;
+  text-decoration: none;
+}
+
+.editorContent a:hover {
+  text-decoration: underline;
+}
+
+.editorContent blockquote {
+  margin: 16px 0;
+  padding: 8px 16px;
+  border-left: 4px solid #059669;
+  background: #f9fafb;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.editorContent code {
+  background: #f3f4f6;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+}
+
+.editorContent pre {
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.editorContent pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.dragHint {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-left: 8px;
+  font-style: italic;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .toolbar {
+    padding: 6px 8px;
+    gap: 2px;
+  }
+  
+  .toolbarButton {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  
+  .toolbarDivider {
+    margin: 0 4px;
+  }
+  
+  .editorContent {
+    padding: 12px;
+    min-height: 200px;
+    font-size: 13px;
+  }
+  
+  .dragHint {
+    display: none;
+  }
+}
+
+/* 暗色主题支持 */
+@media (prefers-color-scheme: dark) {
+  .richTextEditor {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .toolbar {
+    background: #111827;
+    border-color: #374151;
+  }
+  
+  .toolbarButton {
+    color: #9ca3af;
+  }
+  
+  .toolbarButton:hover:not(:disabled) {
+    background: #374151;
+    color: #f3f4f6;
+  }
+  
+  .toolbarDivider {
+    background: #374151;
+  }
+  
+  .editorContent {
+    color: #f3f4f6;
+  }
+  
+  .editorContent h1,
+  .editorContent h2,
+  .editorContent h3,
+  .editorContent h4,
+  .editorContent h5,
+  .editorContent h6 {
+    color: #f9fafb;
+  }
+  
+  .editorContent blockquote {
+    background: #374151;
+    color: #d1d5db;
+    border-left-color: #10b981;
+  }
+  
+  .editorContent code {
+    background: #374151;
+    color: #f3f4f6;
+  }
+}

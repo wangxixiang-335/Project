@@ -186,6 +186,10 @@ app.use(express.static('app_578098177538/dist', {
 app.use('/src', express.static('app_578098177538/src'))
 app.use('/node_modules', express.static('app_578098177538/node_modules'))
 
+// 提供富文本编辑器脚本和其他公共资源
+app.use('/rich-editor.js', express.static('src/public/rich-editor.js'))
+app.use('/public', express.static('src/public'))
+
 // 路由配置
 app.use('/api/auth', userRoutes)
 app.use('/api/upload', uploadRoutes)

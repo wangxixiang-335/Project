@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { API_ENDPOINTS } from '../../config/api';
+import RichTextEditor from '../../components/RichTextEditor';
 import styles from './styles.module.css';
 
 interface FileUpload {
@@ -43,6 +44,11 @@ const AchievementPublishPage: React.FC = () => {
     demoVideo: null,
     attachments: []
   });
+
+  // 富文本内容处理
+  const handleRichTextChange = (content: string) => {
+    setFormData(prev => ({ ...prev, content }));
+  };
   
   // 文件输入引用
   const coverImageInputRef = useRef<HTMLInputElement>(null);
@@ -123,11 +129,7 @@ const AchievementPublishPage: React.FC = () => {
     }));
   };
   
-  // 富文本内容更新
-  const handleContentChange = (e: React.FormEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLDivElement;
-    setFormData(prev => ({ ...prev, content: target.innerHTML }));
-  };
+  
   
   // 封面图上传
   const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -196,8 +198,8 @@ const AchievementPublishPage: React.FC = () => {
       return;
     }
     
-    if (!formData.coverImage) {
-      alert('请上传封面图');
+    if (!formData.content) {
+      alert('请输入成果内容');
       return;
     }
     
@@ -219,8 +221,8 @@ const AchievementPublishPage: React.FC = () => {
         return;
       }
       
-      if (!formData.coverImage) {
-        alert('请上传封面图');
+      if (!formData.content) {
+        alert('请输入成果内容');
         return;
       }
       
@@ -238,7 +240,7 @@ const AchievementPublishPage: React.FC = () => {
         return;
       }
       
-      // 上传封面图
+      // 上传封面图（可选）
       if (formData.coverImage) {
         try {
           console.log('开始上传封面图...');
@@ -294,21 +296,16 @@ const AchievementPublishPage: React.FC = () => {
             console.error('服务器响应:', uploadError.response.data);
             console.error('状态码:', uploadError.response.status);
           }
-          // 使用默认图片URL继续发布流程
-          coverImageUrl = 'https://via.placeholder.com/400x300.png?text=成果封面图'; // 默认封面图
-          console.log('使用默认封面图:', coverImageUrl);
+          // 封面图上传失败也不影响发布，继续发布流程
+          console.log('封面图上传失败，继续发布流程');
         }
-      } else {
-        // 如果没有选择封面图，使用默认图片
-        coverImageUrl = 'https://via.placeholder.com/400x300.png?text=成果封面图';
-        console.log('使用默认封面图:', coverImageUrl);
       }
       
       // 构建请求数据
       const publishData = {
         title: formData.title,
         content_html: formData.content || '<p>暂无详细内容</p>',
-        video_url: coverImageUrl, // 将封面图URL作为video_url字段传递
+        video_url: coverImageUrl || '', // 封面图URL可选
         category: formData.type || '5f18c811-0a39-465b-ab4f-5db179deeed6' // 使用有效的UUID作为默认值
       };
       
@@ -334,6 +331,9 @@ const AchievementPublishPage: React.FC = () => {
           demoVideo: null,
           attachments: []
         });
+        
+        // 清空富文本编辑器内容
+        handleRichTextChange('');
         
         setIsPublishing(false);
         
@@ -551,7 +551,7 @@ const AchievementPublishPage: React.FC = () => {
             {/* 编辑区域 */}
             {activeTab === 'edit' && (
               <div className="space-y-6">
-                {/* 第一行：标题、成果类型、封面图 */}
+                {/* 第一行：标题、成果类型、封面图（可选） */}
                 <div className={`bg-white rounded-xl shadow-card p-6 ${styles.fadeIn}`}>
                   <h3 className="text-lg font-semibold text-text-primary mb-4">基本信息</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -590,7 +590,7 @@ const AchievementPublishPage: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-text-secondary mb-1">
-                        封面图 <span className="text-red-500">*</span>
+                        封面图（可选）
                       </label>
                       <div 
                         onClick={() => coverImageInputRef.current?.click()}
@@ -674,56 +674,12 @@ const AchievementPublishPage: React.FC = () => {
                 
                 {/* 第三行：富文本编辑窗口 */}
                 <div className={`bg-white rounded-xl shadow-card p-6 ${styles.fadeIn}`} style={{animationDelay: '0.2s'}}>
-                  <h3 className="text-lg font-semibold text-text-primary mb-4">成果内容</h3>
-                  {/* 工具栏 */}
-                  <div className={`${styles.editorToolbar} flex flex-wrap items-center p-2 mb-2`}>
-                    <button className="p-2 rounded hover:bg-bg-gray" title="加粗">
-                      <i className="fas fa-bold"></i>
-                    </button>
-                    <button className="p-2 rounded hover:bg-bg-gray" title="斜体">
-                      <i className="fas fa-italic"></i>
-                    </button>
-                    <button className="p-2 rounded hover:bg-bg-gray" title="下划线">
-                      <i className="fas fa-underline"></i>
-                    </button>
-                    <div className="h-6 w-px bg-border-light mx-1"></div>
-                    <button className="p-2 rounded hover:bg-bg-gray" title="标题">
-                      <i className="fas fa-heading"></i>
-                    </button>
-                    <button className="p-2 rounded hover:bg-bg-gray" title="段落">
-                      <i className="fas fa-paragraph"></i>
-                    </button>
-                    <div className="h-6 w-px bg-border-light mx-1"></div>
-                    <button className="p-2 rounded hover:bg-bg-gray" title="插入图片">
-                      <i className="fas fa-image"></i>
-                    </button>
-                    <button className="p-2 rounded hover:bg-bg-gray" title="插入链接">
-                      <i className="fas fa-link"></i>
-                    </button>
-                    <div className="h-6 w-px bg-border-light mx-1"></div>
-                    <button 
-                      onClick={handleAiPolish}
-                      className="p-2 rounded hover:bg-bg-gray" 
-                      title="AI一键润色"
-                    >
-                      <i className="fas fa-magic text-secondary"></i>
-                    </button>
-                    <button 
-                      onClick={handleAiLayout}
-                      className="p-2 rounded hover:bg-bg-gray" 
-                      title="AI一键布局"
-                    >
-                      <i className="fas fa-th-large text-secondary"></i>
-                    </button>
-                  </div>
-                  {/* 编辑区域 */}
-                  <div 
-                    ref={contentEditableRef}
-                    onInput={handleContentChange}
-                    className="min-h-[300px] p-4 border border-border-light rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary transition-all" 
-                    contentEditable="true" 
-                    suppressContentEditableWarning={true}
-                    placeholder="请输入成果详细内容..."
+                  <h3 className="text-lg font-semibold text-text-primary mb-4">成果内容 <span className="text-red-500">*</span></h3>
+                  <RichTextEditor
+                    value={formData.content}
+                    onChange={handleRichTextChange}
+                    placeholder="请输入成果详细内容，可以在文字中插入图片..."
+                    height="400px"
                   />
                 </div>
                 
@@ -849,13 +805,15 @@ const AchievementPublishPage: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="mb-6">
-                  <img 
-                    src={formData.coverImage ? URL.createObjectURL(formData.coverImage) : 'https://s.coze.cn/image/Iy0dUYdJOE0/'} 
-                    alt="成果封面图" 
-                    className="w-full h-auto rounded-lg"
-                  />
-                </div>
+                {formData.coverImage && (
+                  <div className="mb-6">
+                    <img 
+                      src={URL.createObjectURL(formData.coverImage)} 
+                      alt="成果封面图" 
+                      className="w-full h-auto rounded-lg"
+                    />
+                  </div>
+                )}
                 
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-text-primary mb-2">参与人员</h3>
@@ -875,9 +833,16 @@ const AchievementPublishPage: React.FC = () => {
                 
                 <div className="prose max-w-none mb-6">
                   {formData.content ? (
-                    <div dangerouslySetInnerHTML={{ __html: formData.content }} />
+                    <div 
+                      className="rich-text-content"
+                      dangerouslySetInnerHTML={{ __html: formData.content }} 
+                      style={{
+                        lineHeight: '1.6',
+                        color: '#374151'
+                      }}
+                    />
                   ) : (
-                    <p>成果内容预览将在这里显示...</p>
+                    <p className="text-gray-500 italic">成果内容预览将在这里显示...</p>
                   )}
                 </div>
                 

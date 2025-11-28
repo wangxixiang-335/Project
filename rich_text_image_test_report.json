@@ -1,0 +1,37 @@
+{
+  "timestamp": "2025-11-28T01:10:38.354Z",
+  "summary": {
+    "total": 5,
+    "passed": 0,
+    "failed": 5,
+    "skipped": 0,
+    "successRate": "0.0%"
+  },
+  "results": [
+    {
+      "test": "student登录",
+      "status": "失败",
+      "message": "Request failed with status code 401"
+    },
+    {
+      "test": "teacher登录",
+      "status": "失败",
+      "message": "Request failed with status code 401"
+    },
+    {
+      "test": "学生端富文本图片上传",
+      "status": "失败",
+      "message": "Request failed with status code 401"
+    },
+    {
+      "test": "教师端富文本图片上传",
+      "status": "失败",
+      "message": "Request failed with status code 401"
+    },
+    {
+      "test": "教师批改图片回显",
+      "status": "失败",
+      "message": "Request failed with status code 401"
+    }
+  ]
+}

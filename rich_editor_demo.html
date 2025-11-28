@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>富文本编辑器演示 - 学习通风格</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .demo-section {
+            margin-bottom: 40px;
+        }
+
+        .demo-section h2 {
+            color: #374151;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .demo-section h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: #4f46e5;
+            border-radius: 2px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .feature-card {
+            background: #f8fafc;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: #4f46e5;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: #4f46e5;
+        }
+
+        .feature-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .feature-desc {
+            color: #6b7280;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .preview-area {
+            background: #f8fafc;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+                    justify-content: center;
+        }
+
+        .preview-placeholder {
+            color: #9ca3af;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .preview-hint {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .toolbar-preview {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .toolbar-button {
+            width: 36px;
+            height: 36px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #374151;
+        }
+
+        .toolbar-button:hover {
+            background: #f3f4f6;
+            border-color: #4f46e5;
+            color: #4f46e5;
+        }
+
+        .toolbar-button.image {
+            background: #ecfdf5;
+            border-color: #10b981;
+            color: #10b981;
+        }
+
+        .toolbar-button.image:hover {
+            background: #d1fae5;
+        }
+
+        .sample-content {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 20px;
+            min-height: 150px;
+            text-align: left;
+        }
+
+        .sample-content p {
+            margin-bottom: 12px;
+            line-height: 1.6;
+            color: #374151;
+        }
+
+        .sample-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            margin: 10px 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .usage-steps {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 25px;
+        }
+
+        .usage-steps h3 {
+            color: #1e40af;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .usage-steps ol {
+            color: #374151;
+            padding-left: 20px;
+        }
+
+        .usage-steps li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .cta-button {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 学习通风格富文本编辑器</h1>
+            <p>支持图文混排，让内容创作更加直观便捷</p>
+        </div>
+
+        <div class="content">
+            <div class="demo-section">
+                <h2>✨ 核心功能</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">📝</div>
+                        <div class="feature-title">富文本编辑</div>
+                        <div class="feature-desc">支持加粗、斜体、下划线、列表等基础格式</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🖼️</div>
+                        <div class="feature-title">图文混排</div>
+                        <div class="feature-desc">点击工具栏图片按钮，图片直接插入到光标位置</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📤</div>
+                        <div class="feature-title">拖拽上传</div>
+                        <div class="feature-desc">支持拖拽图片文件到编辑区域直接插入</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎨</div>
+                        <div class="feature-title">美观样式</div>
+                        <div class="feature-desc">现代化的UI设计，响应式布局，支持暗色主题</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h2>🛠️ 工具栏预览</h2>
+                <div class="toolbar-preview">
+                    <button class="toolbar-button" title="加粗">B</button>
+                    <button class="toolbar-button" title="斜体">I</button>
+                    <button class="toolbar-button" title="下划线">U</button>
+                    <button class="toolbar-button" title="无序列表">•</button>
+                    <button class="toolbar-button" title="有序列表">1.</button>
+                    <button class="toolbar-button" title="左对齐">⬅</button>
+                    <button class="toolbar-button" title="居中对齐">⬌</button>
+                    <button class="toolbar-button" title="右对齐">➡</button>
+                    <button class="toolbar-button image" title="插入图片">📷</button>
+                </div>
+                <p style="color: #6b7280; font-size: 0.9rem; text-align: center;">
+                    点击 📷 按钮或拖拽图片到编辑区域即可插入图片
+                </p>
+            </div>
+
+            <div class="demo-section">
+                <h2>🎯 使用示例</h2>
+                <div class="sample-content">
+                    <p>这是一个<strong>富文本编辑器</strong>的演示内容。你可以：</p>
+                    <p>• 输入文字内容，支持<strong>加粗</strong>、<em>斜体</em>、<u>下划线</u>等格式</p>
+                    <p>• 点击工具栏的 📷 按钮插入图片，图片会直接显示在文字后面</p>
+                    <p>• 继续输入文字，新内容会显示在图片后面</p>
+                    <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPueLiOadveaWh+aho+S8oOecnzwvdGV4dD48L3N2Zz4=" alt="示例图片">
+                    <p>图片已成功插入到文本中，实现了真正的<strong>图文混排</strong>效果！</p>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h2>📋 使用步骤</h2>
+                <div class="usage-steps">
+                    <h3>快速开始：</h3>
+                    <ol>
+                        <li>点击工具栏的 📷 按钮，选择本地图片文件</li>
+                        <li>或者直接将图片文件拖拽到编辑区域</li>
+                        <li>图片会自动上传到服务器并插入到当前光标位置</li>
+                        <li>继续在图片前后输入文字，实现图文混排</li>
+                        <li>支持多张图片连续插入，自由调整位置</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="demo-section" style="text-align: center;">
+                <h2>🚀 立即体验</h2>
+                <p style="color: #6b7280; margin-bottom: 20px;">
+                    新的富文本编辑器已集成到学生成果发布和教师成果发布页面
+                </p>
+                <button class="cta-button" onclick="alert('请在实际的项目页面中体验新的富文本编辑器功能！')">
+                    <span>🎯</span>
+                    <span>开始体验</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

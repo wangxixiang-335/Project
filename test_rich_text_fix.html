@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>富文本图片上传修复测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .toolbar {
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f9f9f9;
+            border-bottom: none;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .toolbar button {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .toolbar button:hover {
+            background-color: #e6f2ff;
+        }
+        .editor {
+            border: 1px solid #ddd;
+            padding: 20px;
+            min-height: 300px;
+            background: white;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .editor:focus {
+            outline: 2px solid #007bff;
+            outline-offset: -2px;
+        }
+        .upload-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            text-align: center;
+            background: #fafafa;
+        }
+        .upload-btn {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: background-color 0.2s;
+        }
+        .upload-btn:hover {
+            background: #0056b3;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .log-section {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ 富文本图片上传修复测试</h1>
+        <p>此页面用于测试修复后的富文本编辑器图片上传功能。</p>
+        
+        <div class="upload-section">
+            <h3>🔧 测试步骤</h3>
+            <ol>
+                <li>确保已登录系统（或页面会自动使用开发者token）</li>
+                <li>点击下方"测试图片上传"按钮</li>
+                <li>选择图片文件</li>
+                <li>观察上传结果和日志</li>
+            </ol>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;" />
+            <button class="upload-btn" onclick="testImageUpload()">
+                📸 测试图片上传
+            </button>
+            <button class="upload-btn" onclick="checkToken()">
+                🔑 检查Token
+            </button>
+        </div>
+
+        <div id="status"></div>
+
+        <h3>📝 富文本编辑器</h3>
+        <div class="toolbar">
+            <button onclick="formatText('bold')"><b>B</b></button>
+            <button onclick="formatText('italic')"><i>I</i></button>
+            <button onclick="formatText('underline')"><u>U</u></button>
+            <button onclick="insertImage()">🖼️ 插入图片</button>
+        </div>
+        <div id="editor" class="editor" contenteditable="true">
+            <p>在这里输入文本，然后点击工具栏中的图片按钮来插入图片...</p>
+        </div>
+
+        <h3>📊 测试日志</h3>
+        <div id="log" class="log-section">
+            <div>等待测试...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        function checkToken() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                log(`✅ Token存在: ${token.substring(0, 20)}...`);
+                showStatus('Token验证成功', 'success');
+            } else {
+                log('⚠️ Token不存在，将使用开发者token');
+                showStatus('未找到Token，将使用开发者token', 'info');
+            }
+        }
+        
+        async function testImageUpload() {
+            const fileInput = document.getElementById('fileInput');
+            
+            if (!fileInput.files.length) {
+                fileInput.click();
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            log(`开始上传文件: ${file.name} (${file.size} bytes, ${file.type})`);
+            showStatus('正在上传图片...', 'info');
+            
+            // 获取token
+            let token = localStorage.getItem('token');
+            if (!token) {
+                log('⚠️ 未找到token，使用开发者token');
+                token = 'dev-student-token'; // 使用学生开发者token
+            }
+            
+            const formData = new FormData();
+            formData.append('image', file); // 注意字段名是'image'
+            
+            try {
+                const response = await fetch(`${API_BASE}/upload/general-image`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: formData
+                });
+                
+                log(`服务器响应状态: ${response.status} ${response.statusText}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: '未知错误' }));
+                    log(`上传失败: ${JSON.stringify(errorData)}`);
+                    throw new Error(`上传失败: ${errorData.error || response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`上传结果: ${JSON.stringify(result)}`);
+                
+                if (result.success && result.data) {
+                    showStatus('✅ 图片上传成功！', 'success');
+                    log(`✅ 图片URL: ${result.data.url}`);
+                    log(`💾 存储方式: ${result.data.storage_type || 'unknown'}`);
+                    
+                    // 插入到编辑器
+                    insertImageToEditor(result.data.url);
+                } else {
+                    throw new Error(result.message || '上传失败');
+                }
+                
+            } catch (error) {
+                console.error('上传错误:', error);
+                showStatus(`❌ 上传失败: ${error.message}`, 'error');
+                log(`❌ 上传错误: ${error.message}`);
+            }
+        }
+        
+        function insertImageToEditor(imageUrl) {
+            const editor = document.getElementById('editor');
+            const imgHtml = `<img src="${imageUrl}" alt="上传的图片" style="max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0;" />`;
+            
+            // 在光标位置插入图片
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                const div = document.createElement('div');
+                div.innerHTML = imgHtml;
+                range.insertNode(div);
+            } else {
+                // 如果没有选中位置，在末尾插入
+                editor.innerHTML += imgHtml;
+            }
+            
+            log('✅ 图片已插入到富文本编辑器');
+        }
+        
+        function formatText(command) {
+            document.execCommand(command, false, null);
+            log(`执行格式化命令: ${command}`);
+        }
+        
+        function insertImage() {
+            document.getElementById('fileInput').click();
+        }
+        
+        // 监听文件选择
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                testImageUpload();
+            }
+        });
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 富文本图片上传测试页面已加载');
+            checkToken();
+        });
+    </script>
+</body>
+</html>
